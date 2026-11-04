@@ -1,0 +1,102 @@
+<UserControl x:Class="Vigil.App.Pages.ScanPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <Style x:Key="Choice" TargetType="{x:Type Button}">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Margin" Value="0,0,12,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border x:Name="b" Background="{StaticResource Surface}" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="16" Padding="20,20,20,18">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="b" Property="BorderBrush" Value="{StaticResource BorderStrong}" />
+                                <Setter TargetName="b" Property="Background" Value="{StaticResource Surface2}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+    <StackPanel>
+        <TextBlock Text="Scansione" Style="{StaticResource H1}" />
+        <Border Style="{StaticResource TitleBar}" />
+
+        <!-- Scelta del tipo di scansione -->
+        <UniformGrid x:Name="ChoicePanel" Columns="3" Margin="0,0,-12,16">
+            <Button Style="{StaticResource Choice}" Click="OnQuick">
+                <StackPanel>
+                    <Path Data="{StaticResource IconBolt}" Stroke="{StaticResource Cyan}" StrokeThickness="1.8" StrokeLineJoin="Round" Width="28" Height="28" Stretch="Uniform" HorizontalAlignment="Left" />
+                    <TextBlock Text="Rapida" Style="{StaticResource H2}" Margin="0,12,0,4" />
+                    <TextBlock Style="{StaticResource Muted}" FontSize="12.5" Text="Desktop, Download, Documenti, esecuzione automatica e cartelle temporanee." />
+                </StackPanel>
+            </Button>
+            <Button Style="{StaticResource Choice}" Click="OnFull">
+                <StackPanel>
+                    <Path Data="{StaticResource IconDrive}" Stroke="{StaticResource Violet}" StrokeThickness="1.8" StrokeLineJoin="Round" Width="28" Height="28" Stretch="Uniform" HorizontalAlignment="Left" />
+                    <TextBlock Text="Completa" Style="{StaticResource H2}" Margin="0,12,0,4" />
+                    <TextBlock Style="{StaticResource Muted}" FontSize="12.5" Text="Tutti i dischi fissi. Su un PC datato può richiedere ore: puoi interromperla quando vuoi." />
+                </StackPanel>
+            </Button>
+            <Button Style="{StaticResource Choice}" Click="OnCustom">
+                <StackPanel>
+                    <Path Data="{StaticResource IconFolder}" Stroke="{StaticResource Lime}" StrokeThickness="1.8" StrokeLineJoin="Round" Width="28" Height="28" Stretch="Uniform" HorizontalAlignment="Left" />
+                    <TextBlock Text="Personalizzata" Style="{StaticResource H2}" Margin="0,12,0,4" />
+                    <TextBlock Style="{StaticResource Muted}" FontSize="12.5" Text="Scegli una cartella o un disco (anche una chiavetta USB)." />
+                </StackPanel>
+            </Button>
+        </UniformGrid>
+
+        <!-- Avanzamento / risultato -->
+        <Border x:Name="ProgressCard" Style="{StaticResource Card}" Visibility="Collapsed">
+            <StackPanel>
+                <Grid>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Path x:Name="StateIcon" Data="{StaticResource IconScan}" Width="22" Height="22" Stretch="Uniform" StrokeThickness="2"
+                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Stroke="{StaticResource Cyan}" />
+                        <TextBlock x:Name="StateTitle" Style="{StaticResource H2}" Margin="12,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button x:Name="CancelButton" Style="{StaticResource Ghost}" Content="Interrompi" Click="OnCancel" />
+                        <Button x:Name="NewButton" Style="{StaticResource Primary}" Content="Nuova scansione" Click="OnNew" Visibility="Collapsed" />
+                    </StackPanel>
+                </Grid>
+                <!-- Barra "indeterminata": il totale dei file non si conosce in anticipo -->
+                <Border x:Name="Track" Height="4" CornerRadius="2" Background="{StaticResource Surface3}" Margin="0,16,0,0" ClipToBounds="True">
+                    <Border x:Name="Runner" Width="140" HorizontalAlignment="Left" CornerRadius="2" Background="{StaticResource GradBrand}">
+                        <Border.RenderTransform>
+                            <TranslateTransform x:Name="RunnerX" />
+                        </Border.RenderTransform>
+                    </Border>
+                </Border>
+                <TextBlock x:Name="CurrentFile" Style="{StaticResource Faint}" Margin="0,10,0,14" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                <UniformGrid Columns="6" Margin="0,0,-10,0">
+                    <Border Style="{StaticResource Tile}"><StackPanel><TextBlock Text="Analizzati" Style="{StaticResource Faint}" /><TextBlock x:Name="StatScanned" FontFamily="{StaticResource DisplayFont}" FontSize="22" Text="0" /></StackPanel></Border>
+                    <Border Style="{StaticResource Tile}"><StackPanel><TextBlock Text="Minacce" Style="{StaticResource Faint}" /><TextBlock x:Name="StatInfected" FontFamily="{StaticResource DisplayFont}" FontSize="22" Text="0" /></StackPanel></Border>
+                    <Border Style="{StaticResource Tile}"><StackPanel><TextBlock Text="Sospetti" Style="{StaticResource Faint}" /><TextBlock x:Name="StatSuspicious" FontFamily="{StaticResource DisplayFont}" FontSize="22" Text="0" /></StackPanel></Border>
+                    <Border Style="{StaticResource Tile}"><StackPanel><TextBlock Text="Saltati" Style="{StaticResource Faint}" /><TextBlock x:Name="StatSkipped" FontFamily="{StaticResource DisplayFont}" FontSize="22" Text="0" /></StackPanel></Border>
+                    <Border Style="{StaticResource Tile}"><StackPanel><TextBlock Text="Non leggibili" Style="{StaticResource Faint}" /><TextBlock x:Name="StatErrors" FontFamily="{StaticResource DisplayFont}" FontSize="22" Text="0" /></StackPanel></Border>
+                    <Border Style="{StaticResource Tile}"><StackPanel><TextBlock Text="Tempo" Style="{StaticResource Faint}" /><TextBlock x:Name="StatTime" FontFamily="{StaticResource DisplayFont}" FontSize="22" Text="00:00" /></StackPanel></Border>
+                </UniformGrid>
+                <TextBlock x:Name="ExtraInfo" Style="{StaticResource Faint}" Margin="0,4,0,0" />
+                <TextBlock x:Name="RootsInfo" Style="{StaticResource Faint}" Margin="0,4,0,0" />
+            </StackPanel>
+        </Border>
+
+        <!-- Rilevamenti -->
+        <Border x:Name="DetectionsCard" Style="{StaticResource Card}" Visibility="Collapsed">
+            <StackPanel>
+                <Grid Margin="0,0,0,10">
+                    <TextBlock Text="Rilevamenti" Style="{StaticResource H2}" />
+                    <Button x:Name="QuarantineAllButton" Style="{StaticResource Danger}" Content="Metti in quarantena le minacce" HorizontalAlignment="Right" Click="OnQuarantineAll" />
+                </Grid>
+                <StackPanel x:Name="DetectionList" />
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>

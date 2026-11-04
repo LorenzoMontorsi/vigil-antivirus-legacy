@@ -1,0 +1,88 @@
+<Window x:Class="Vigil.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Vigil Legacy" Width="1040" Height="720" MinWidth="860" MinHeight="580"
+        WindowStartupLocation="CenterScreen" Icon="Assets/vigil.ico"
+        Background="{StaticResource Bg}" FontFamily="{StaticResource UiFont}" FontSize="14"
+        TextOptions.TextFormattingMode="Display" UseLayoutRounding="True">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="232" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Barra laterale -->
+        <Border Background="{StaticResource Bg2}" BorderBrush="{StaticResource Border}" BorderThickness="0,0,1,0" ClipToBounds="True">
+            <Grid>
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="22,24,0,28">
+                        <Image Source="Assets/logo.png" Width="38" Height="38" RenderOptions.BitmapScalingMode="HighQuality" />
+                        <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="Vigil" FontFamily="{StaticResource DisplayFont}" FontSize="22" Foreground="{StaticResource GradBrand}" />
+                            <TextBlock Text="LEGACY" FontSize="10" Foreground="{StaticResource Text3}" Margin="1,-3,0,0" />
+                        </StackPanel>
+                    </StackPanel>
+                    <RadioButton x:Name="NavDashboard" Style="{StaticResource Nav}" Tag="{StaticResource IconHome}" Content="Panoramica" IsChecked="True" Checked="OnNav" />
+                    <RadioButton x:Name="NavScan" Style="{StaticResource Nav}" Tag="{StaticResource IconScan}" Content="Scansione" Checked="OnNav" />
+                    <RadioButton x:Name="NavQuarantine" Style="{StaticResource Nav}" Tag="{StaticResource IconBox}" Checked="OnNav" AutomationProperties.Name="Quarantena">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Quarantena" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
+                            <Border x:Name="QuarantineBadge" Background="{StaticResource GradDanger}" CornerRadius="9" MinWidth="20" Height="18" Margin="10,0,0,0" Padding="6,0" Visibility="Collapsed">
+                                <TextBlock x:Name="QuarantineCount" FontSize="11" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton x:Name="NavSettings" Style="{StaticResource Nav}" Tag="{StaticResource IconSettings}" Content="Impostazioni" Checked="OnNav" />
+                </StackPanel>
+
+                <!-- Strisce decorative -->
+                <Canvas VerticalAlignment="Bottom" Height="170" IsHitTestVisible="False">
+                    <Canvas.RenderTransform>
+                        <RotateTransform Angle="-18" CenterX="116" CenterY="85" />
+                    </Canvas.RenderTransform>
+                    <Rectangle Canvas.Left="40" Canvas.Top="40" Width="260" Height="16" RadiusX="8" RadiusY="8">
+                        <Rectangle.Fill>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop Color="#008B5CF6" Offset="0" />
+                                <GradientStop Color="{StaticResource VioletColor}" Offset="0.4" />
+                                <GradientStop Color="{StaticResource MagentaColor}" Offset="1" />
+                            </LinearGradientBrush>
+                        </Rectangle.Fill>
+                    </Rectangle>
+                    <Rectangle Canvas.Left="-10" Canvas.Top="66" Width="290" Height="16" RadiusX="8" RadiusY="8">
+                        <Rectangle.Fill>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop Color="#0022D3EE" Offset="0" />
+                                <GradientStop Color="{StaticResource CyanColor}" Offset="0.35" />
+                                <GradientStop Color="{StaticResource TealColor}" Offset="1" />
+                            </LinearGradientBrush>
+                        </Rectangle.Fill>
+                    </Rectangle>
+                    <Rectangle Canvas.Left="70" Canvas.Top="92" Width="240" Height="16" RadiusX="8" RadiusY="8">
+                        <Rectangle.Fill>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop Color="#00A3E635" Offset="0" />
+                                <GradientStop Color="{StaticResource LimeColor}" Offset="0.45" />
+                                <GradientStop Color="{StaticResource AmberColor}" Offset="1" />
+                            </LinearGradientBrush>
+                        </Rectangle.Fill>
+                    </Rectangle>
+                </Canvas>
+                <TextBlock x:Name="VersionText" VerticalAlignment="Bottom" Margin="22,0,0,14" Style="{StaticResource Faint}" />
+            </Grid>
+        </Border>
+
+        <!-- Contenuto -->
+        <Grid Grid.Column="1">
+            <Grid.Background>
+                <RadialGradientBrush Center="0.9,-0.1" GradientOrigin="0.9,-0.1" RadiusX="0.75" RadiusY="0.7">
+                    <GradientStop Color="#2A1E4D" Offset="0" />
+                    <GradientStop Color="#0A0B14" Offset="1" />
+                </RadialGradientBrush>
+            </Grid.Background>
+            <ScrollViewer x:Name="Scroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                <ContentControl x:Name="Host" Margin="36,30,36,30" MaxWidth="980" />
+            </ScrollViewer>
+        </Grid>
+    </Grid>
+</Window>

@@ -1,0 +1,18 @@
+<UserControl x:Class="Vigil.App.Pages.QuarantinePage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel>
+        <TextBlock Text="Quarantena" Style="{StaticResource H1}" />
+        <Border Style="{StaticResource TitleBar}" />
+        <TextBlock Style="{StaticResource Muted}" Margin="0,0,0,18" MaxWidth="640" HorizontalAlignment="Left"
+                   Text="I file in quarantena sono cifrati e chiusi in un deposito: non possono essere eseguiti né aperti. Puoi ripristinarli nella posizione originale se sei sicuro che siano innocui, oppure eliminarli per sempre." />
+        <Border x:Name="EmptyCard" Style="{StaticResource Card}">
+            <StackPanel HorizontalAlignment="Center" Margin="0,20">
+                <Path Data="{StaticResource IconBox}" Stroke="{StaticResource Text3}" StrokeThickness="1.6" StrokeLineJoin="Round" Width="44" Height="44" Stretch="Uniform" />
+                <TextBlock Text="La quarantena è vuota" Style="{StaticResource H2}" HorizontalAlignment="Center" Margin="0,14,0,4" />
+                <TextBlock Text="Nessun file isolato." Style="{StaticResource Muted}" HorizontalAlignment="Center" />
+            </StackPanel>
+        </Border>
+        <StackPanel x:Name="List" />
+    </StackPanel>
+</UserControl>

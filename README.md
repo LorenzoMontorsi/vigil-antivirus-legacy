@@ -15,7 +15,12 @@ Antivirus open source per **Windows XP, Vista e 7** (e successivi), scritto in *
 | Cache delle scansioni, esclusioni per percorso ed estensione | ✅ |
 | Quarantena cifrata (AES-256 + HMAC-SHA256) con ripristino | ✅ |
 | Client per ClamAV (`clamd`, comando INSTREAM) | ✅ |
-| Interfaccia WPF | 🛠️ in corso |
+| Interfaccia WPF (tema scuro "neon stripes" come Vigil): panoramica, scansione rapida/completa/personalizzata, quarantena, impostazioni, esclusioni | ✅ |
+| ClamAV **legacy** incluso ([port win32 di Gianluigi Tiesi / ClamWin](https://oss.netfarm.it/clamav/), gira da XP): clamd + freshclam gestiti da Vigil | ✅ |
+| Aggiornamento automatico periodico delle firme (intervallo configurabile) | ✅ |
+| Icona nell'area di notifica, avvisi, menu "Analizza con Vigil" | 🛠️ da fare |
+| Protezione in tempo reale (servizio) | 🛠️ da fare |
+| Installer per XP/7 | 🛠️ da fare |
 
 ## Requisiti
 
@@ -26,12 +31,20 @@ Antivirus open source per **Windows XP, Vista e 7** (e successivi), scritto in *
 Serve il .NET SDK moderno (8 o successivo) su Windows: compila per `net40` senza bisogno di Visual Studio 2010.
 
 ```powershell
+.\scripts\fetch-clamav.ps1   # ClamAV legacy (versione fissata, SHA-256 verificato) in third_party\clamav
 dotnet build
 dotnet test      # i test girano su .NET 4.8, il codice resta compatibile con 4.0
 ```
 
 Regole per chi contribuisce: C# recente va bene, ma solo ciò che il compilatore traduce da sé.
 **Niente** `async`/`await`, `Task.Run`, `ZipArchive`, `AesCryptoServiceProvider`, `HttpClient`: in .NET 4.0 o su XP non esistono.
+
+## ClamAV su XP
+
+Il ClamAV ufficiale non gira più su XP. Vigil Legacy usa il port win32 "legacy" di Gianluigi Tiesi
+(progetto ClamWin, sorgenti su [github.com/clamwin/clamav-win32](https://github.com/clamwin/clamav-win32)),
+che include OpenSSL e curl recenti: freshclam scarica le firme ufficiali anche dove il TLS di Windows XP non basta.
+Le firme complete occupano circa 1 GB di RAM: su PC con poca memoria ClamAV si può spegnere dalle impostazioni.
 
 ## Licenza
 

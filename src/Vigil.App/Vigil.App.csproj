@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net40</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>Vigil.App</RootNamespace>
+    <AssemblyName>VigilLegacy</AssemblyName>
+    <ApplicationIcon>Assets\vigil.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- 32 bit preferito: gira identico su XP x86 e x64, come il ClamAV incluso. -->
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="Microsoft.VisualBasic" />
+    <ProjectReference Include="..\Vigil.Engine\Vigil.Engine.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Assets\vigil.ico" />
+    <Resource Include="Assets\logo.png" />
+  </ItemGroup>
+  <!-- ClamAV legacy (scripts\fetch-clamav.ps1) accanto all'eseguibile, se è stato scaricato. -->
+  <ItemGroup Condition="Exists('..\..\third_party\clamav\clamd.exe')">
+    <None Include="..\..\third_party\clamav\**\*" LinkBase="clamav" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

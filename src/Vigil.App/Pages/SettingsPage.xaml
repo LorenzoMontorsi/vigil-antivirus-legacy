@@ -1,0 +1,57 @@
+<UserControl x:Class="Vigil.App.Pages.SettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel>
+        <TextBlock Text="Impostazioni" Style="{StaticResource H1}" />
+        <Border Style="{StaticResource TitleBar}" />
+
+        <Border Style="{StaticResource Card}">
+            <StackPanel>
+                <TextBlock Text="Scansione" Style="{StaticResource H2}" Margin="0,0,0,8" />
+                <CheckBox x:Name="Heuristics" Style="{StaticResource Toggle}" Content="Euristica" Tag="Segnala come «sospetti» i file con caratteristiche tipiche del malware (doppie estensioni, packer, iniezione di codice). Un sospetto non viene mai spostato da solo." Click="OnToggle" />
+                <CheckBox x:Name="Archives" Style="{StaticResource Toggle}" Content="Analizza dentro gli archivi ZIP" Tag="Fino a tre livelli di archivi annidati, con limiti contro le «zip bomb»." Click="OnToggle" />
+                <CheckBox x:Name="TrustMs" Style="{StaticResource Toggle}" Content="Fidati dei file firmati da Microsoft" Tag="I file di sistema con firma digitale valida saltano i controlli più lenti: la scansione completa diventa molto più veloce." Click="OnToggle" />
+                <CheckBox x:Name="UseCache" Style="{StaticResource Toggle}" Content="Ricorda i file già controllati" Tag="Un file pulito e non modificato non viene rianalizzato finché le firme non cambiano." Click="OnToggle" />
+                <CheckBox x:Name="AutoQuarantine" Style="{StaticResource Toggle}" Content="Metti in quarantena automaticamente" Tag="Le minacce certe vengono isolate subito, durante la scansione. I sospetti restano da decidere a mano." Click="OnToggle" />
+                <TextBlock Text="Salta i file più grandi di" Margin="0,12,0,6" />
+                <WrapPanel x:Name="SizeChips" />
+                <Button Style="{StaticResource Small}" Content="Svuota la cache delle scansioni" HorizontalAlignment="Left" Margin="0,6,0,0" Click="OnClearCache" />
+            </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource Card}">
+            <StackPanel>
+                <TextBlock Text="ClamAV e aggiornamenti" Style="{StaticResource H2}" Margin="0,0,0,8" />
+                <CheckBox x:Name="Clamav" Style="{StaticResource Toggle}" Content="Usa il motore ClamAV" Tag="Il motore open source di Cisco Talos, con milioni di firme. Richiede circa 1 GB di RAM: su PC con poca memoria si può spegnere, Vigil continua con i suoi controlli." Click="OnClamav" />
+                <TextBlock x:Name="ClamavInfo" Style="{StaticResource Faint}" Margin="0,0,0,8" />
+                <CheckBox x:Name="AutoUpdate" Style="{StaticResource Toggle}" Content="Aggiornamento automatico" Tag="Vigil cerca da solo nuove definizioni dei virus mentre è aperto." Click="OnToggle" />
+                <StackPanel x:Name="IntervalPanel">
+                    <TextBlock Text="Cerca aggiornamenti ogni" Margin="0,8,0,6" />
+                    <WrapPanel x:Name="IntervalChips" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource Card}">
+            <StackPanel>
+                <TextBlock Text="Esclusioni" Style="{StaticResource H2}" Margin="0,0,0,4" />
+                <TextBlock Style="{StaticResource Muted}" Text="Cartelle, file ed estensioni che Vigil non analizza." Margin="0,0,0,12" />
+                <StackPanel x:Name="ExclusionList" />
+                <WrapPanel Margin="0,8,0,0">
+                    <Button Style="{StaticResource Small}" Content="Aggiungi cartella…" Click="OnAddFolder" Margin="0,0,8,8" />
+                    <Button Style="{StaticResource Small}" Content="Aggiungi file…" Click="OnAddFile" Margin="0,0,16,8" />
+                    <TextBox x:Name="ExtBox" Width="120" Margin="0,0,8,8" ToolTip="Es. iso oppure .vhd" KeyDown="OnExtKey" />
+                    <Button Style="{StaticResource Small}" Content="Aggiungi estensione" Click="OnAddExt" Margin="0,0,0,8" />
+                </WrapPanel>
+            </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource Card}">
+            <StackPanel>
+                <TextBlock Text="Informazioni" Style="{StaticResource H2}" Margin="0,0,0,8" />
+                <TextBlock x:Name="About" Style="{StaticResource Muted}" />
+                <Button Style="{StaticResource Small}" Content="Apri la cartella dei dati" HorizontalAlignment="Left" Margin="0,12,0,0" Click="OnOpenData" />
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>
