@@ -1,0 +1,15 @@
+<Project>
+  <PropertyGroup>
+    <!-- C# moderno, ma solo funzioni che il compilatore traduce da sé: il codice gira su .NET 4.0. -->
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Deterministic>true</Deterministic>
+    <Version>0.1.0</Version>
+    <Authors>Vigil Legacy contributors</Authors>
+    <Product>Vigil Legacy</Product>
+    <Copyright>GPL-3.0-or-later</Copyright>
+    <NeutralLanguage>it-IT</NeutralLanguage>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+</Project>
