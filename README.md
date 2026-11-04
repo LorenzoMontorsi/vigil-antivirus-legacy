@@ -58,7 +58,7 @@ Il limite onesto: il controllo avviene **subito dopo** la scrittura o l'avvio, n
 esecuzione per il tempo dell'analisi (di norma pochi millisecondi, grazie alla cache).
 
 Il servizio gestisce anche ClamAV e gli aggiornamenti per tutto il PC; l'app comunica con lui tramite la named pipe
-`\.\pipe\VigilLegacy.Service`. Sospendere la protezione, cambiare le esclusioni e ripristinare dalla quarantena
+`\\.\pipe\VigilLegacy.Service`. Sospendere la protezione, cambiare le esclusioni e ripristinare dalla quarantena
 richiedono un amministratore (su Vista e successivi l'app chiede il consenso UAC).
 
 ## ClamAV su XP
