@@ -21,7 +21,12 @@ static class VmAgent
 
     static void Main(string[] args)
     {
-        token = File.ReadAllText(args.Length > 0 ? args[0] : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "token.txt")).Trim();
+        // Parte sia dallo script del primo avvio sia dalla chiave Run: una sola istanza.
+        bool first;
+        var single = new Mutex(true, @"Global\VigilVmAgent", out first);
+        if (!first) return;
+        GC.KeepAlive(single);
+        token =File.ReadAllText(args.Length > 0 ? args[0] : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "token.txt")).Trim();
         var l = new TcpListener(IPAddress.Any, Port);
         l.Start();
         while (true)
