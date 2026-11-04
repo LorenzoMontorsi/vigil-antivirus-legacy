@@ -24,10 +24,16 @@ Antivirus open source per **Windows XP, Vista e 7** (e successivi), scritto in *
 | Icona nell'area di notifica con menu, avvio automatico all'accesso (nascosto) | ✅ |
 | Avvisi in basso a destra con azioni (Metti in quarantena, Vedi i risultati, Ignora) | ✅ |
 | «Analizza con Vigil» nel menu del tasto destro (file, cartelle, unità; selezioni multiple in un'unica scansione) | ✅ |
-| Protezione in tempo reale: servizio `VigilLegacy` (SYSTEM) che analizza i file nuovi/modificati su tutti i dischi fissi e i programmi appena avviati (WMI), con quarantena e terminazione automatiche | ✅ provata in VM |
+| Protezione in tempo reale: servizio `VigilLegacy` (SYSTEM) che analizza i file nuovi/modificati su tutti i dischi fissi e i programmi appena avviati (WMI), con quarantena e terminazione automatiche | ✅ provata su XP SP3 |
 | Sospensione della protezione dal menu dell'icona (15 min, 1 h, 4 h, fino al riavvio), riservata agli amministratori | ✅ |
 | Quarantena di sistema protetta (solo SYSTEM e amministratori), visibile e gestibile dall'app | ✅ |
 | Installer unico (`VigilLegacySetup.exe`): installazione guidata o silenziosa, servizio, collegamenti, «Programmi e funzionalità», disinstallazione | ✅ provato in VM |
+
+Provato su **Windows XP SP3 (italiano)** in una macchina virtuale VMware: installazione silenziosa,
+interfaccia WPF disegnata correttamente, ClamAV legacy 1.5.2 con le firme ufficiali complete scaricate da
+freshclam e clamd pronto, protezione in tempo reale che mette in quarantena un file infetto appena scritto e
+termina un programma infetto appena avviato. Gli script di prova sono in `tests/vm` (`xp-create.ps1` crea la VM,
+`xp.ps1` la comanda tramite l'agente `xp-agent`).
 
 ## Requisiti
 
