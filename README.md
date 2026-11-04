@@ -27,7 +27,7 @@ Antivirus open source per **Windows XP, Vista e 7** (e successivi), scritto in *
 | «Analizza con Vigil» nel menu del tasto destro (file, cartelle, unità; selezioni multiple in un'unica scansione) | ✅ |
 | Protezione in tempo reale: servizio `VigilLegacy` (SYSTEM) che analizza i file nuovi/modificati su tutti i dischi fissi e i programmi appena avviati (WMI), con quarantena e terminazione automatiche | ✅ provata su XP SP3 |
 | Scudo anti-ransomware (senza driver): file-esca nascosti nelle cartelle dei documenti + rilevamento delle ondate (molti documenti modificati o rinominati con estensioni da riscatto in pochi secondi); ferma i programmi non firmati avviati da poco | ✅ provato su XP SP3 |
-| Autodifesa a livello di driver (minifilter `vigilflt.sys`, solo Windows a 32 bit): impedisce a chiunque — malware o amministratore — di modificare, cancellare o rinominare i file di Vigil mentre è in esecuzione | ✅ provato su XP SP3 |
+| Autodifesa a livello di driver (minifilter `vigilflt.sys`, build a 32 e 64 bit): impedisce a chiunque — malware o amministratore — di modificare, cancellare o rinominare i file di Vigil mentre è in esecuzione | ✅ 32 bit provato su XP SP3; 64 bit da collaudare |
 | Sospensione della protezione dal menu dell'icona (15 min, 1 h, 4 h, fino al riavvio), riservata agli amministratori | ✅ |
 | Quarantena di sistema protetta (solo SYSTEM e amministratori), visibile e gestibile dall'app | ✅ |
 | Installer unico (`VigilLegacySetup.exe`): installazione guidata o silenziosa, servizio, collegamenti, «Programmi e funzionalità», disinstallazione | ✅ provato in VM |
@@ -51,7 +51,12 @@ la modifica, la cancellazione e la rinomina dei file di Vigil). Gli script di pr
 
 ## Installare
 
-`VigilLegacySetup-<versione>.exe` (va eseguito da amministratore) installa tutto in `Program Files\Vigil Legacy`:
+Ci sono **due edizioni**, da scegliere in base al Windows in uso:
+
+- **`VigilLegacySetup-<versione>-x86.exe`** — per Windows **a 32 bit** (XP, 7 x86). L'autodifesa a livello di driver è attiva da subito.
+- **`VigilLegacySetup-<versione>-x64.exe`** — per Windows **a 64 bit** (XP x64, 7 x64). Identica, ma con il driver a 64 bit. Poiché Windows a 64 bit carica solo driver firmati e il nostro è autofirmato, l'autodifesa del driver si attiva eseguendo una volta `abilita-driver-64bit.cmd` (come amministratore) e riavviando; senza questo passaggio tutto il resto funziona lo stesso, con la protezione tramite ACL. I programmi veri e propri sono a 32 bit e girano su entrambi i sistemi.
+
+`VigilLegacySetup-<versione>-<arch>.exe` (va eseguito da amministratore) installa tutto in `Program Files\Vigil Legacy`:
 app, servizio della protezione in tempo reale e ClamAV legacy. Alla prima esecuzione il servizio scarica
 le firme di ClamAV (circa 300 MB).
 
@@ -68,7 +73,11 @@ Serve il .NET SDK moderno (8 o successivo) su Windows: compila per `net40` senza
 
 ```powershell
 .\scripts\fetch-clamav.ps1   # ClamAV legacy (versione fissata, SHA-256 verificato) in third_party\clamav
-.\scripts\build-dist.ps1     # Release in dist\VigilLegacy e installer dist\VigilLegacySetup-<versione>.exe
+.\scripts\build-driver.ps1 -Arch x86   # driver a 32 bit (serve il WDK 7.1)
+.\scripts\build-driver.ps1 -Arch x64   # driver a 64 bit
+.\scripts\sign-driver.ps1              # firma i driver con un certificato di prova (per i 64 bit)
+.\scripts\build-dist.ps1 -Arch x86     # installer dist\VigilLegacySetup-<versione>-x86.exe
+.\scripts\build-dist.ps1 -Arch x64     # installer dist\VigilLegacySetup-<versione>-x64.exe
 dotnet build
 dotnet test      # i test girano su .NET 4.8, il codice resta compatibile con 4.0
 ```
@@ -98,11 +107,17 @@ cancellare o rinominare i file di Vigil finché è in esecuzione; le aperture in
 permesse. Il servizio lo registra e lo carica da solo all'avvio (`fltmc`), e lo scarica quando si ferma, così
 aggiornamenti e disinstallazione funzionano. Si attiva/disattiva dalle impostazioni.
 
-Un driver kernel deve avere gli stessi bit del sistema e non c'è emulazione per i driver: `vigilflt.sys` è a **32 bit**
-e si carica su **Windows XP e 7 a 32 bit** (dove i driver non firmati sono ammessi). Sui sistemi a **64 bit** servirebbe
-una build a 64 bit **firmata** (o la modalità test-signing), quindi lì l'autodifesa del driver resta disattivata e vale
-la sola protezione tramite ACL. Per ricompilarlo serve il **WDK 7.1.0** (l'ultimo che targettizza XP): vedi
-`scripts/build-driver.ps1`.
+Un driver kernel deve avere gli stessi bit del kernel e non c'è emulazione per i driver, quindi ci sono due build:
+
+- **`vigilflt.sys` a 32 bit** (PE `5.01`, i386), nell'edizione **x86**: si carica su **Windows XP e 7 a 32 bit**, dove i
+  driver non firmati sono ammessi — attivo da subito.
+- **`vigilflt.sys` a 64 bit** (PE `5.02`, x86-64), nell'edizione **x64**: Windows a 64 bit carica solo driver firmati, e il
+  nostro è firmato con un **certificato di prova**. Per usarlo si esegue `abilita-driver-64bit.cmd` (rende fidato il
+  certificato con `--trust-cert` e attiva `bcdedit /set testsigning on`) e si riavvia. Senza, vale la sola protezione ACL.
+
+Testato su Windows XP SP3 a 32 bit; la build a 64 bit compila, è firmata e si installa, ma va collaudata su un sistema
+a 64 bit reale. Per ricompilare serve il **WDK 7.1.0**, l'ultimo che targettizza XP: `scripts/build-driver.ps1 -Arch x86|x64`
+e `scripts/sign-driver.ps1`.
 
 Il servizio gestisce anche ClamAV e gli aggiornamenti per tutto il PC; l'app comunica con lui tramite la named pipe
 `\\.\pipe\VigilLegacy.Service`. Sospendere la protezione, cambiare le esclusioni e ripristinare dalla quarantena

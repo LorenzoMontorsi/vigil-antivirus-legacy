@@ -26,6 +26,8 @@ namespace Vigil.Service
                     return Install();
                 case "--uninstall":
                     return Uninstall();
+                case "--trust-cert":
+                    return TrustCert(args.Length > 1 ? args[1] : null);
                 case "--console":
                     var core = new ProtectionCore();
                     core.Start();
@@ -37,6 +39,43 @@ namespace Vigil.Service
                 default:
                     ServiceBase.Run(new VigilService());
                     return 0;
+            }
+        }
+
+        /// <summary>
+        /// Rende fidato il certificato di prova del driver a 64 bit (Trusted Root + Trusted Publishers
+        /// del computer), così il minifilter firmato si carica quando il sistema è in test-signing.
+        /// Usa l'archivio certificati .NET per non dipendere da certutil (assente su alcuni XP).
+        /// </summary>
+        static int TrustCert(string path)
+        {
+            if (string.IsNullOrEmpty(path) || !File.Exists(path))
+            {
+                Console.WriteLine("Certificato non trovato: " + path);
+                return 1;
+            }
+            try
+            {
+                var cert = new System.Security.Cryptography.X509Certificates.X509Certificate2(path);
+                foreach (var name in new[]
+                {
+                    System.Security.Cryptography.X509Certificates.StoreName.Root,
+                    System.Security.Cryptography.X509Certificates.StoreName.TrustedPublisher,
+                })
+                {
+                    var store = new System.Security.Cryptography.X509Certificates.X509Store(
+                        name, System.Security.Cryptography.X509Certificates.StoreLocation.LocalMachine);
+                    store.Open(System.Security.Cryptography.X509Certificates.OpenFlags.ReadWrite);
+                    store.Add(cert);
+                    store.Close();
+                }
+                Console.WriteLine("Certificato di prova reso fidato.");
+                return 0;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Impossibile fidarsi del certificato: " + e.Message);
+                return 1;
             }
         }
 

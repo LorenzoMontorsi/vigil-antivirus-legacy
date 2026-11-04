@@ -6,11 +6,14 @@ using System.Text;
 namespace Vigil.Service
 {
     /// <summary>
-    /// Gestisce il minifilter di autodifesa vigilflt.sys (a 32 bit, XP/Win7 x86): lo registra con
-    /// l'INF e lo carica/scarica tramite fltmc, strumenti già presenti in Windows da XP SP2.
+    /// Gestisce il minifilter di autodifesa vigilflt.sys: lo registra con sc + chiavi dell'istanza
+    /// e lo carica/scarica tramite fltmc (strumenti presenti in Windows da XP SP2).
     ///
-    /// Sui Windows a 64 bit il driver a 32 bit non si carica (serve una build a 64 bit firmata):
-    /// in quel caso il servizio prosegue senza, con la sola autodifesa a livello di ACL.
+    /// Funziona sia a 32 sia a 64 bit: il driver incluso nell'edizione ha gli stessi bit del sistema.
+    /// Il servizio è un processo a 32 bit; su Windows a 64 bit usa il percorso "Sysnative" per
+    /// raggiungere il vero system32 senza la redirezione WOW64. Sui 64 bit il driver si carica solo
+    /// se il sistema è in test-signing e il certificato di prova è fidato: lo abilita lo script
+    /// "abilita-driver-64bit.cmd" incluso nell'edizione a 64 bit.
     /// </summary>
     sealed class DriverManager
     {
@@ -25,14 +28,27 @@ namespace Vigil.Service
         }
 
         string Sys { get { return Path.Combine(ServicePaths.InstallDir, "vigilflt.sys"); } }
-        string Inf { get { return Path.Combine(ServicePaths.InstallDir, "vigilflt.inf"); } }
-        public bool Available { get { return File.Exists(Sys) && File.Exists(Inf); } }
+        public bool Available { get { return File.Exists(Sys); } }
 
-        /// <summary>Solo su Windows a 32 bit il driver a 32 bit può caricarsi.</summary>
-        public static bool Is32BitWindows
+        /// <summary>
+        /// Vero system32: su Windows a 64 bit un processo a 32 bit verrebbe deviato in SysWOW64,
+        /// quindi si usa l'alias "Sysnative" per installare il driver a 64 bit nella cartella giusta.
+        /// </summary>
+        static string SysDir
         {
-            get { return IntPtr.Size == 4 && !InWow64(); }
+            get
+            {
+                var win = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+                if (IntPtr.Size == 4 && InWow64())
+                {
+                    var sysnative = Path.Combine(win, "Sysnative");
+                    if (Directory.Exists(sysnative)) return sysnative;
+                }
+                return Environment.SystemDirectory;
+            }
         }
+
+        static bool Is64BitWindows { get { return IntPtr.Size == 8 || InWow64(); } }
 
         static bool InWow64()
         {
@@ -44,24 +60,27 @@ namespace Vigil.Service
             catch (Exception) { return false; }
         }
 
+        string Fltmc { get { return Path.Combine(SysDir, "fltmc.exe"); } }
+        string Sc { get { return Path.Combine(SysDir, "sc.exe"); } }
+        string DriversDir { get { return Path.Combine(SysDir, "drivers"); } }
+
         /// <summary>Registra (se serve) e carica il minifilter. Restituisce true se risulta attivo.</summary>
         public bool Enable()
         {
             if (!Available)
                 return false;
-            if (!Is32BitWindows)
-            {
-                log("Autodifesa del driver non disponibile su Windows a 64 bit (serve una build a 64 bit firmata)", "info");
-                return false;
-            }
             try
             {
                 if (!Registered())
                     Register();
                 int code = Run(Fltmc, "load " + FilterName, 30000);
-                // 0 = caricato; già caricato = errore non fatale.
                 Loaded = code == 0 || IsLoaded();
-                log(Loaded ? "Autodifesa del driver attiva (minifilter vigilflt)" : "Impossibile caricare il minifilter (codice " + code + ")", Loaded ? "info" : "failed");
+                if (Loaded)
+                    log("Autodifesa del driver attiva (minifilter vigilflt)", "info");
+                else if (Is64BitWindows)
+                    log("Driver di autodifesa non caricato: su Windows a 64 bit serve il test-signing (esegui 'abilita-driver-64bit.cmd' e riavvia)", "failed");
+                else
+                    log("Impossibile caricare il minifilter di autodifesa (codice " + code + ")", "failed");
                 return Loaded;
             }
             catch (Exception e)
@@ -74,21 +93,17 @@ namespace Vigil.Service
         /// <summary>Scarica il minifilter (così i file di Vigil tornano modificabili, es. per aggiornarlo).</summary>
         public void Disable()
         {
-            try
-            {
-                Run(Fltmc, "unload " + FilterName, 30000);
-            }
-            catch (Exception) { }
+            try { Run(Fltmc, "unload " + FilterName, 30000); } catch (Exception) { }
             Loaded = false;
         }
 
         /// <summary>
-        /// Registra il minifilter senza finestre (InstallHinfSection mostra dialoghi): copia il .sys
-        /// in system32\drivers, crea il servizio del filtro con sc e scrive le chiavi dell'istanza.
+        /// Registra il minifilter senza finestre: copia il .sys in system32\drivers, crea il servizio
+        /// del filtro con sc e scrive le chiavi dell'istanza (l'altitudine del filtro).
         /// </summary>
         void Register()
         {
-            File.Copy(Sys, Path.Combine(Environment.SystemDirectory, "drivers", "vigilflt.sys"), true);
+            File.Copy(Sys, Path.Combine(DriversDir, "vigilflt.sys"), true);
             Run(Sc, "create " + FilterName + " type= filesys start= demand binPath= System32\\drivers\\vigilflt.sys DisplayName= \"Vigil Legacy Self-Protection\"", 30000);
             Run(Sc, "description " + FilterName + " \"Protegge i file di Vigil Legacy (minifilter).\"", 15000);
             using (var k = Microsoft.Win32.Registry.LocalMachine.CreateSubKey(
@@ -108,10 +123,8 @@ namespace Vigil.Service
         {
             Disable();
             try { Run(Sc, "delete " + FilterName, 15000); } catch (Exception) { }
-            try { File.Delete(Path.Combine(Environment.SystemDirectory, "drivers", "vigilflt.sys")); } catch (Exception) { }
+            try { File.Delete(Path.Combine(DriversDir, "vigilflt.sys")); } catch (Exception) { }
         }
-
-        static string Sc { get { return Path.Combine(Environment.SystemDirectory, "sc.exe"); } }
 
         bool Registered()
         {
@@ -133,8 +146,6 @@ namespace Vigil.Service
             }
             catch (Exception) { return false; }
         }
-
-        static string Fltmc { get { return Path.Combine(Environment.SystemDirectory, "fltmc.exe"); } }
 
         static int Run(string exe, string args, int timeoutMs, StringBuilder output = null)
         {
