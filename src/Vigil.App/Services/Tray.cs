@@ -11,12 +11,16 @@ namespace Vigil.App.Services
     public sealed class Tray : IDisposable
     {
         readonly NotifyIcon icon;
-        readonly ToolStripMenuItem updateItem;
+        readonly ToolStripMenuItem updateItem, pauseItem, resumeItem;
+        readonly ToolStripSeparator rtSeparator;
 
         public event Action OpenRequested;
         public event Action QuickScanRequested;
         public event Action UpdateRequested;
         public event Action ExitRequested;
+        /// <summary>Minuti di sospensione; 0 = fino al riavvio.</summary>
+        public event Action<int> PauseRequested;
+        public event Action ResumeRequested;
 
         public Tray()
         {
@@ -29,7 +33,21 @@ namespace Vigil.App.Services
             updateItem.Click += (s, e) => Raise(UpdateRequested);
             var exit = new ToolStripMenuItem("Esci da Vigil");
             exit.Click += (s, e) => Raise(ExitRequested);
-            menu.Items.AddRange(new ToolStripItem[] { open, new ToolStripSeparator(), quick, updateItem, new ToolStripSeparator(), exit });
+
+            // Sospensione della protezione in tempo reale (solo se il servizio c'è).
+            pauseItem = new ToolStripMenuItem("Sospendi la protezione");
+            foreach (var choice in new[] { Tuple.Create("Per 15 minuti", 15), Tuple.Create("Per 1 ora", 60), Tuple.Create("Per 4 ore", 240), Tuple.Create("Fino al riavvio", 0) })
+            {
+                int minutes = choice.Item2;
+                var it = new ToolStripMenuItem(choice.Item1);
+                it.Click += (s, e) => { var h = PauseRequested; if (h != null) h(minutes); };
+                pauseItem.DropDownItems.Add(it);
+            }
+            resumeItem = new ToolStripMenuItem("Riprendi la protezione");
+            resumeItem.Click += (s, e) => Raise(ResumeRequested);
+            rtSeparator = new ToolStripSeparator();
+            menu.Items.AddRange(new ToolStripItem[] { open, new ToolStripSeparator(), quick, updateItem, rtSeparator, pauseItem, resumeItem, new ToolStripSeparator(), exit });
+            SetRealtime(false, false);
 
             icon = new NotifyIcon
             {
@@ -66,6 +84,13 @@ namespace Vigil.App.Services
             icon.Text = t.Length > 63 ? t.Substring(0, 63) : t;
             updateItem.Enabled = !updating;
             updateItem.Text = updating ? "Aggiornamento in corso…" : "Aggiorna le firme";
+        }
+
+        public void SetRealtime(bool available, bool paused)
+        {
+            rtSeparator.Visible = available;
+            pauseItem.Visible = available && !paused;
+            resumeItem.Visible = available && paused;
         }
 
         /// <summary>Fumetto di sistema: per gli avvisi senza azioni (funziona da XP).</summary>

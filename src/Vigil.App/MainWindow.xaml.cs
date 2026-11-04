@@ -65,6 +65,8 @@ namespace Vigil.App
         {
             int n = 0;
             try { n = AppState.Current.Quarantine.List().Count; } catch (Exception) { }
+            var rt = AppState.Current.Realtime.Status;
+            if (rt != null) n += rt.Quarantined;
             QuarantineBadge.Visibility = n > 0 ? Visibility.Visible : Visibility.Collapsed;
             QuarantineCount.Text = n.ToString();
             var page = Host.Content as IPage;

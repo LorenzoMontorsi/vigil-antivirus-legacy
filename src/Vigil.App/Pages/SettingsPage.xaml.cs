@@ -43,7 +43,8 @@ namespace Vigil.App.Pages
             TrustMs.IsChecked = S.TrustMicrosoft;
             UseCache.IsChecked = S.UseCache;
             AutoQuarantine.IsChecked = S.AutoQuarantine;
-            Clamav.IsChecked = S.ClamavEnabled;
+            Clamav.IsChecked = S.ClamavEnabled || AppState.Current.ServiceMode;
+            Clamav.IsEnabled = !AppState.Current.ServiceMode;
             AutoUpdate.IsChecked = S.AutoUpdate;
             StartAtLogin.IsChecked = S.StartAtLogin;
             ShellMenu.IsChecked = S.ContextMenu;
@@ -55,8 +56,11 @@ namespace Vigil.App.Pages
             loading = false;
 
             var clam = AppState.Current.Clamav;
-            var bundled = ClamavManager.BundledVersion;
-            ClamavInfo.Text = !ClamavManager.IsInstalled
+            var bundled = clam.BundledVersion;
+            ClamavInfo.Text = AppState.Current.ServiceMode
+                ? "ClamAV è gestito dal servizio della protezione in tempo reale (firme per tutto il PC) · stato: " +
+                  (clam.IsReady ? "pronto, " + DashboardPage.ShortClamVersion(clam.VersionText) : "in attesa del servizio")
+                : !clam.IsInstalled
                 ? "ClamAV non è presente accanto a Vigil (cartella «clamav»)."
                 : "ClamAV " + bundled + " per Windows legacy (port di Gianluigi Tiesi, progetto ClamWin) · stato: " +
                   (clam.IsReady ? "pronto, " + DashboardPage.ShortClamVersion(clam.VersionText) : clam.Detail ?? "non attivo");
@@ -94,7 +98,7 @@ namespace Vigil.App.Pages
             b.Child = new TextBlock { Text = text, TextTrimming = TextTrimming.CharacterEllipsis, ToolTip = text };
             g.Children.Add(b);
             var x = new Button { Content = "Rimuovi", Style = (Style)FindResource("Small"), Margin = new Thickness(8, 0, 0, 0) };
-            x.Click += (s, e) => { remove(); Save(); RenderExclusions(); };
+            x.Click += (s, e) => { remove(); SaveExclusions(); RenderExclusions(); };
             Grid.SetColumn(x, 1);
             g.Children.Add(x);
             return g;
@@ -103,6 +107,23 @@ namespace Vigil.App.Pages
         void Save()
         {
             AppState.Current.SaveSettings();
+        }
+
+        /// <summary>Dopo una modifica alle esclusioni: le invia anche al servizio (consenso UAC se serve).</summary>
+        void SaveExclusions()
+        {
+            Save();
+            var st = AppState.Current;
+            if (!st.ServiceMode)
+                return;
+            new System.Threading.Thread(() =>
+            {
+                var err = st.PushExclusionsToService();
+                if (err != null)
+                    Dispatcher.BeginInvoke(new Action(() => MessageBox.Show(
+                        "Le esclusioni valgono per le scansioni, ma la protezione in tempo reale non le ha ricevute: " + err,
+                        "Vigil Legacy", MessageBoxButton.OK, MessageBoxImage.Warning)));
+            }) { IsBackground = true }.Start();
         }
 
         void OnToggle(object sender, RoutedEventArgs e)
@@ -136,7 +157,7 @@ namespace Vigil.App.Pages
                 if (S.ClamavEnabled)
                 {
                     st.Clamav.Start();
-                    if (!ClamavManager.HasDatabase && ClamavManager.IsInstalled)
+                    if (!st.Clamav.HasDatabase && st.Clamav.IsInstalled)
                         st.RunUpdate();
                 }
                 else
@@ -172,7 +193,7 @@ namespace Vigil.App.Pages
         {
             if (!S.Exclusions.Paths.Any(x => string.Equals(x, p, StringComparison.OrdinalIgnoreCase)))
                 S.Exclusions.Paths.Add(p);
-            Save();
+            SaveExclusions();
             RenderExclusions();
         }
 
@@ -184,7 +205,7 @@ namespace Vigil.App.Pages
             if (!S.Exclusions.Extensions.Any(x => string.Equals(x.TrimStart('.'), ext, StringComparison.OrdinalIgnoreCase)))
                 S.Exclusions.Extensions.Add(ext);
             ExtBox.Text = "";
-            Save();
+            SaveExclusions();
             RenderExclusions();
         }
 

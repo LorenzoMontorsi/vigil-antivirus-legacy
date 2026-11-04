@@ -27,13 +27,23 @@ namespace Vigil.App.Pages
                 items = new List<QuarantineItem>();
                 MessageBox.Show("Impossibile leggere la quarantena: " + e.Message, "Vigil Legacy", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
-            EmptyCard.Visibility = items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            // Quarantena del servizio (protezione in tempo reale): per tutto il PC.
+            List<QuarantineItem> service = new List<QuarantineItem>();
+            if (AppState.Current.ServiceMode)
+            {
+                var resp = RtProtocol.TryCall(RtRequest.Of("quarantine_list"));
+                if (resp != null && resp.Ok && resp.Items != null)
+                    service = resp.Items;
+            }
+            EmptyCard.Visibility = items.Count + service.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             List.Children.Clear();
+            foreach (var it in service)
+                List.Children.Add(Row(it, true));
             foreach (var it in items)
-                List.Children.Add(Row(it));
+                List.Children.Add(Row(it, false));
         }
 
-        UIElement Row(QuarantineItem it)
+        UIElement Row(QuarantineItem it, bool service)
         {
             var card = new Border { Style = (Style)FindResource("Card"), Padding = new Thickness(18, 14, 18, 14), Margin = new Thickness(0, 0, 0, 10) };
             var g = new Grid();
@@ -47,7 +57,8 @@ namespace Vigil.App.Pages
             info.Children.Add(new TextBlock { Text = it.OriginalPath, TextTrimming = TextTrimming.CharacterEllipsis, ToolTip = it.OriginalPath, Margin = new Thickness(0, 3, 0, 3) });
             info.Children.Add(new TextBlock
             {
-                Text = FileUtil.FromUnix(it.QuarantinedAt).ToString("g") + " · " + Size(it.Size) + " · " + SourceName(it.Source),
+                Text = FileUtil.FromUnix(it.QuarantinedAt).ToString("g") + " · " + Size(it.Size) + " · " + SourceName(it.Source) +
+                       (service ? " · protezione in tempo reale" : ""),
                 Style = (Style)FindResource("Faint"),
             });
             Grid.SetColumn(info, 1);
@@ -55,9 +66,9 @@ namespace Vigil.App.Pages
 
             var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
             var restore = new Button { Content = "Ripristina", Style = (Style)FindResource("Small") };
-            restore.Click += (s, e) => Restore(it);
+            restore.Click += (s, e) => { if (service) ServiceAction(it, "quarantine_restore"); else Restore(it); };
             var del = new Button { Content = "Elimina", Style = (Style)FindResource("Small"), Margin = new Thickness(6, 0, 0, 0) };
-            del.Click += (s, e) => Delete(it);
+            del.Click += (s, e) => { if (service) ServiceAction(it, "quarantine_delete"); else Delete(it); };
             actions.Children.Add(restore);
             actions.Children.Add(del);
             Grid.SetColumn(actions, 2);
@@ -102,6 +113,28 @@ namespace Vigil.App.Pages
                 MessageBox.Show("Eliminazione non riuscita: " + e.Message, "Vigil Legacy", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             AppState.Current.RaiseChanged();
+        }
+
+        /// <summary>Ripristino/eliminazione dalla quarantena del servizio: serve un amministratore.</summary>
+        void ServiceAction(QuarantineItem it, string cmd)
+        {
+            bool restore = cmd == "quarantine_restore";
+            var question = restore
+                ? "Ripristinare \"" + it.OriginalPath + "\"?\n\nFallo solo se sei sicuro che il file sia innocuo: Vigil lo considera «" + it.Threat + "». Verrà escluso dalla protezione in tempo reale."
+                : "Eliminare per sempre \"" + it.OriginalPath + "\"?";
+            if (MessageBox.Show(question, restore ? "Ripristina dalla quarantena" : "Elimina dalla quarantena", MessageBoxButton.YesNo,
+                    restore ? MessageBoxImage.Warning : MessageBoxImage.Question) != MessageBoxResult.Yes)
+                return;
+            new System.Threading.Thread(() =>
+            {
+                var err = Realtime.Command(new RtRequest { Cmd = cmd, Id = it.Id });
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (err != null)
+                        MessageBox.Show((restore ? "Ripristino" : "Eliminazione") + " non riuscito: " + err, "Vigil Legacy", MessageBoxButton.OK, MessageBoxImage.Error);
+                    AppState.Current.RaiseChanged();
+                }));
+            }) { IsBackground = true }.Start();
         }
 
         static string SourceName(string s)

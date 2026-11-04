@@ -2,14 +2,14 @@ using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
-namespace Vigil.App.Services
+namespace Vigil.Engine
 {
     /// <summary>
     /// Job object di Windows con "termina alla chiusura": se Vigil si chiude o va in crash,
     /// clamd e freshclam vengono terminati con lui invece di restare orfani.
     /// Disponibile da Windows 2000. Se non si riesce (Vigil già dentro un altro job su XP/7) si va avanti senza.
     /// </summary>
-    static class ChildProcessJob
+    public static class ChildProcessJob
     {
         static readonly IntPtr Job = Create();
 

@@ -17,6 +17,10 @@ namespace Vigil.App.Pages
         public DashboardPage()
         {
             InitializeComponent();
+            // I contatori della protezione in tempo reale cambiano di continuo: si rileggono ogni 3 s, solo se visibile.
+            var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+            timer.Tick += (s, e) => { if (IsVisible && AppState.Current.ServiceMode) Refresh(); };
+            timer.Start();
             AppState.Current.UpdateLog += line => Dispatcher.BeginInvoke(new Action(() => AddLog(line)));
         }
 
@@ -38,17 +42,27 @@ namespace Vigil.App.Pages
             var clam = st.Clamav;
             int quarantined = 0;
             try { quarantined = st.Quarantine.List().Count; } catch (Exception) { }
+            if (st.Realtime.Status != null)
+                quarantined += st.Realtime.Status.Quarantined;
 
             // Stato generale
             Mood mood;
             string title, text;
-            bool clamOk = !st.Settings.ClamavEnabled || clam.IsReady;
+            bool clamOk = !(st.Settings.ClamavEnabled || st.ServiceMode) || clam.IsReady;
+            var rt = st.Realtime.Status;
             long scanAgeDays = p.LastScanUnix == 0 ? long.MaxValue : (FileUtil.NowUnix() - p.LastScanUnix) / 86400;
             if (p.LastScanUnix != 0 && p.LastScanThreats > 0)
             {
                 mood = Mood.Danger;
                 title = "Ci sono minacce da gestire";
                 text = "L'ultima scansione ha trovato " + p.LastScanThreats + " elementi pericolosi o sospetti. Apri la pagina Scansione per decidere cosa farne.";
+            }
+            else if (rt != null && rt.Paused)
+            {
+                mood = Mood.Warn;
+                title = "Protezione in tempo reale sospesa";
+                text = rt.PausedUntil > 0 ? "Riprende da sola alle " + FileUtil.FromUnix(rt.PausedUntil).ToString("HH:mm") + ". Puoi riattivarla subito dal menu dell'icona vicino all'orologio."
+                                          : "Resta sospesa fino al riavvio del PC. Puoi riattivarla dal menu dell'icona vicino all'orologio.";
             }
             else if (st.Settings.ClamavEnabled && (clam.Status == ClamavStatus.Starting))
             {
@@ -91,21 +105,35 @@ namespace Vigil.App.Pages
             AddEngine("ClamAV", ClamText(st), ClamColor(st));
             AddEngine("Firme di Vigil", st.Engine.HashSignatures.ToString("N0") + " hash · EICAR · archivi ZIP", Brush("Ok"));
             AddEngine("Euristica", st.Settings.Heuristics ? "attiva: nomi ingannevoli, packer, iniezione di codice" : "disattivata", st.Settings.Heuristics ? Brush("Ok") : Brush("Text3"));
-            AddEngine("Protezione in tempo reale", "in arrivo nelle prossime versioni", Brush("Text3"));
+            if (rt == null)
+                AddEngine("Protezione in tempo reale", "servizio non installato (lo installa il programma di installazione)", Brush("Text3"));
+            else
+                AddEngine("Protezione in tempo reale",
+                    (rt.Paused ? "sospesa" : "attiva") + " · dischi " + string.Join(" ", (rt.WatchedDrives ?? new List<string>()).ToArray()) +
+                    (rt.ProcessMonitor ? " · controllo dei programmi avviati" : "") + " · " + rt.FilesScanned.ToString("N0") + " file e " +
+                    rt.ProcessesChecked.ToString("N0") + " programmi controllati, " + rt.Threats + " minacce bloccate",
+                    rt.Paused ? Brush("Amber") : Brush("Ok"));
 
             // Aggiornamenti
             UpdateButton.IsEnabled = !st.IsUpdating;
             UpdateButton.Content = st.IsUpdating ? "Aggiornamento…" : "Aggiorna ora";
-            UpdateInfo.Text = p.LastUpdateUnix == 0
+            long lastUpdate = st.LastUpdateUnix;
+            UpdateInfo.Text = lastUpdate == 0
                 ? "Le firme non sono ancora mai state aggiornate."
-                : "Ultimo aggiornamento " + Ago(p.LastUpdateUnix) + (p.LastUpdateOk ? "" : " (con errori)") + "." +
-                  (st.Settings.AutoUpdate ? " Vigil controlla da solo ogni " + st.Settings.UpdateIntervalHours + (st.Settings.UpdateIntervalHours == 1 ? " ora." : " ore.") : " Aggiornamento automatico disattivato.");
+                : "Ultimo aggiornamento " + Ago(lastUpdate) + (st.LastUpdateOk ? "" : " (con errori)") + "." +
+                  (st.ServiceMode ? " Gli aggiornamenti li fa il servizio, per tutto il PC." :
+                  (st.Settings.AutoUpdate ? " Vigil controlla da solo ogni " + st.Settings.UpdateIntervalHours + (st.Settings.UpdateIntervalHours == 1 ? " ora." : " ore.") : " Aggiornamento automatico disattivato."));
         }
 
         static string ClamText(AppState st)
         {
-            if (!st.Settings.ClamavEnabled) return "disattivato nelle impostazioni";
+            if (!st.Settings.ClamavEnabled && !st.ServiceMode) return "disattivato nelle impostazioni";
             var c = st.Clamav;
+            if (st.ServiceMode && !c.IsReady)
+            {
+                var rt = st.Realtime.Status;
+                return "del servizio · " + (rt != null && rt.ClamavDetail != null ? rt.ClamavDetail : "in avvio");
+            }
             switch (c.Status)
             {
                 case ClamavStatus.Ready: return "pronto · " + ShortClamVersion(c.VersionText);
@@ -117,7 +145,7 @@ namespace Vigil.App.Pages
 
         static Brush ClamColor(AppState st)
         {
-            if (!st.Settings.ClamavEnabled) return Brush("Text3");
+            if (!st.Settings.ClamavEnabled && !st.ServiceMode) return Brush("Text3");
             switch (st.Clamav.Status)
             {
                 case ClamavStatus.Ready: return Brush("Ok");

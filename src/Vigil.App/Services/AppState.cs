@@ -1,15 +1,20 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using Vigil.Engine;
 
 namespace Vigil.App.Services
 {
     /// <summary>
-    /// Stato condiviso dell'applicazione: impostazioni, motore, quarantena, ClamAV.
+    /// Stato condiviso dell'applicazione: impostazioni, motore, quarantena, ClamAV, servizio.
     /// Gli eventi possono arrivare da thread di lavoro: chi aggiorna l'interfaccia
     /// deve passare dal Dispatcher.
+    ///
+    /// Se il servizio della protezione in tempo reale è installato, ClamAV e aggiornamenti
+    /// sono suoi (dati per tutto il PC): l'app usa il suo clamd e gli chiede di aggiornare.
+    /// Senza servizio l'app avvia un clamd proprio con dati per utente.
     /// </summary>
     public sealed class AppState
     {
@@ -19,6 +24,7 @@ namespace Vigil.App.Services
         public AppStateFile Persisted { get; private set; }
         public Quarantine Quarantine { get; private set; }
         public ClamavManager Clamav { get; private set; }
+        public Realtime Realtime { get; private set; }
 
         volatile ScanEngine engine = new ScanEngine();
         public ScanEngine Engine { get { return engine; } }
@@ -27,7 +33,17 @@ namespace Vigil.App.Services
         public event Action<string> UpdateLog;
 
         int updating;
-        public bool IsUpdating { get { return updating != 0; } }
+        public bool IsUpdating
+        {
+            get
+            {
+                var s = Realtime.Status;
+                return updating != 0 || (s != null && s.Updating);
+            }
+        }
+
+        /// <summary>Il servizio è installato e risponde.</summary>
+        public bool ServiceMode { get { return Realtime.Available; } }
 
         AppState()
         {
@@ -35,8 +51,15 @@ namespace Vigil.App.Services
             Settings = Settings.Load();
             Persisted = AppStateFile.Load();
             Quarantine = new Quarantine(AppPaths.QuarantineDir);
-            Clamav = new ClamavManager();
+            Clamav = new ClamavManager(AppPaths.ClamavDir, AppPaths.ClamavDbDir, AppPaths.DataDir, AppPaths.LogDir);
             Clamav.StatusChanged += RaiseChanged;
+            Realtime = new Realtime();
+            Realtime.Changed += RaiseChanged;
+            Realtime.EventReceived += e =>
+            {
+                if (e.Kind == "update" && e.Detail != null)
+                    Log(e.Detail);
+            };
         }
 
         public static AppState Init()
@@ -51,34 +74,68 @@ namespace Vigil.App.Services
             if (h != null) h();
         }
 
-        /// <summary>Caricamento iniziale (in background): firme locali e ClamAV.</summary>
+        /// <summary>Caricamento iniziale (in background): firme locali, servizio e ClamAV.</summary>
         public void StartBackground()
         {
+            Realtime.Start();
             new Thread(() =>
             {
                 ReloadSignatures();
+                // Con il servizio installato ClamAV è suo, anche se in questo momento non risponde
+                // (sta partendo): l'app non avvia mai un secondo clamd.
+                bool service = ServiceInstalled() || RtProtocol.TryCall(RtRequest.Of("status")) != null;
+                if (service)
+                {
+                    // ClamAV è del servizio: ci si collega appena ha caricato le firme.
+                    while (!Clamav.Attach())
+                        Thread.Sleep(5000);
+                    return;
+                }
                 if (Settings.ClamavEnabled)
                     Clamav.Start();
-                if (Settings.AutoUpdate && (IsUpdateDue() || (Settings.ClamavEnabled && !ClamavManager.HasDatabase && ClamavManager.IsInstalled)))
+                if (Settings.AutoUpdate && (IsUpdateDue() || (Settings.ClamavEnabled && !Clamav.HasDatabase && Clamav.IsInstalled)))
                     RunUpdate();
             }) { IsBackground = true, Name = "Vigil avvio" }.Start();
 
-            // Pianificatore: ogni 15 minuti controlla se è ora di aggiornare.
+            // Pianificatore: ogni 15 minuti controlla se è ora di aggiornare (solo senza servizio).
             new Thread(() =>
             {
                 while (true)
                 {
                     Thread.Sleep(TimeSpan.FromMinutes(15));
-                    if (Settings.AutoUpdate && IsUpdateDue())
+                    if (!ServiceMode && Settings.AutoUpdate && IsUpdateDue())
                         RunUpdate();
                 }
             }) { IsBackground = true, Name = "Vigil aggiornamenti" }.Start();
+        }
+
+        static bool ServiceInstalled()
+        {
+            try
+            {
+                return System.ServiceProcess.ServiceController.GetServices().Any(s => s.ServiceName == "VigilLegacy");
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
 
         public bool IsUpdateDue()
         {
             long age = FileUtil.NowUnix() - Persisted.LastUpdateUnix;
             return Persisted.LastUpdateUnix == 0 || age >= Settings.UpdateIntervalHours * 3600L;
+        }
+
+        /// <summary>Ultimo aggiornamento: del servizio se c'è, altrimenti dell'app.</summary>
+        public long LastUpdateUnix
+        {
+            get { var s = Realtime.Status; return s != null ? s.LastUpdateUnix : Persisted.LastUpdateUnix; }
+        }
+
+        public bool LastUpdateOk
+        {
+            get { var s = Realtime.Status; return s != null ? s.LastUpdateOk : Persisted.LastUpdateOk; }
         }
 
         public void ReloadSignatures()
@@ -98,6 +155,13 @@ namespace Vigil.App.Services
         /// <summary>Aggiorna firme (bloccante). Se un aggiornamento è già in corso non fa nulla.</summary>
         public bool RunUpdate()
         {
+            if (ServiceMode)
+            {
+                // Lo fa il servizio; l'avanzamento arriva come eventi "update".
+                var err = Realtime.Command(RtRequest.Of("update"));
+                if (err != null) Log("Errore: " + err);
+                return err == null;
+            }
             if (Interlocked.CompareExchange(ref updating, 1, 0) != 0)
                 return false;
             RaiseChanged();
@@ -148,11 +212,22 @@ namespace Vigil.App.Services
             RaiseChanged();
         }
 
+        /// <summary>
+        /// Invia le esclusioni al servizio (serve un amministratore: può comparire il consenso UAC).
+        /// null se riuscito o se il servizio non c'è.
+        /// </summary>
+        public string PushExclusionsToService()
+        {
+            if (!ServiceMode)
+                return null;
+            return Realtime.Command(new RtRequest { Cmd = "exclusions", Exclusions = Settings.Exclusions });
+        }
+
         /// <summary>Opzioni di scansione correnti, con ClamAV e cache se attivi.</summary>
         public ScanOptions BuildScanOptions()
         {
             var o = Settings.ToScanOptions();
-            if (Settings.ClamavEnabled && Clamav.IsReady)
+            if ((Settings.ClamavEnabled || ServiceMode) && Clamav.IsReady)
                 o.Clamd = Clamav.Client;
             if (Settings.UseCache)
                 o.Cache = new ScanCache(AppPaths.CacheFile, Engine.Generation(o, o.Clamd != null ? Clamav.VersionText : null));
@@ -166,7 +241,7 @@ namespace Vigil.App.Services
 
         public void Shutdown()
         {
-            Clamav.Stop();
+            Clamav.Stop(); // spegne clamd solo se l'ha avviato l'app
         }
 
         /// <summary>Cartelle della scansione rapida: dove di solito arriva e si avvia il malware.</summary>

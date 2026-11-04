@@ -2,11 +2,11 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
-using Vigil.Engine;
 
-namespace Vigil.App.Services
+namespace Vigil.Engine
 {
     public enum ClamavStatus
     {
@@ -23,7 +23,8 @@ namespace Vigil.App.Services
     /// <summary>
     /// Gestisce il ClamAV "legacy" incluso (port win32 di Gianluigi Tiesi, gira da XP):
     /// avvia clamd in ascolto solo su 127.0.0.1 e aggiorna le firme con freshclam.
-    /// I due programmi stanno nel job di Vigil: se Vigil termina, terminano anche loro.
+    /// I due programmi stanno nel job del processo: se Vigil termina, terminano anche loro.
+    /// Lo usano sia l'app (dati per utente) sia il servizio (dati per tutto il PC).
     /// </summary>
     public sealed class ClamavManager
     {
@@ -41,19 +42,32 @@ namespace Vigil.App.Services
         public string VersionText { get; private set; }
         public ClamdClient Client { get; private set; }
 
-        public ClamavManager()
+        /// <summary>Cartella con clamd.exe, freshclam.exe e le DLL.</summary>
+        public string InstallDir { get; private set; }
+        /// <summary>Cartella delle firme (daily/main/bytecode).</summary>
+        public string DbDir { get; private set; }
+        /// <summary>Dove scrivere clamd.conf e freshclam.conf.</summary>
+        public string ConfDir { get; private set; }
+        public string LogDir { get; private set; }
+
+        /// <summary>true se il clamd in ascolto l'abbiamo avviato noi (e quindi lo spegniamo noi).</summary>
+        public bool OwnsDaemon { get; private set; }
+
+        public ClamavManager(string installDir, string dbDir, string confDir, string logDir)
         {
+            InstallDir = installDir;
+            DbDir = dbDir;
+            ConfDir = confDir;
+            LogDir = logDir;
             Client = new ClamdClient("127.0.0.1", Port);
         }
 
-        public static string InstallDir { get { return AppPaths.ClamavDir; } }
-
-        public static bool IsInstalled
+        public bool IsInstalled
         {
             get { return File.Exists(Path.Combine(InstallDir, "clamd.exe")) && File.Exists(Path.Combine(InstallDir, "freshclam.exe")); }
         }
 
-        public static string BundledVersion
+        public string BundledVersion
         {
             get
             {
@@ -62,12 +76,12 @@ namespace Vigil.App.Services
             }
         }
 
-        public static bool HasDatabase
+        public bool HasDatabase
         {
             get
             {
-                var d = AppPaths.ClamavDbDir;
-                return Directory.Exists(d) && Directory.GetFiles(d).Any(f => f.EndsWith(".cvd", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".cld", StringComparison.OrdinalIgnoreCase));
+                return Directory.Exists(DbDir) && Directory.GetFiles(DbDir).Any(f =>
+                    f.EndsWith(".cvd", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".cld", StringComparison.OrdinalIgnoreCase));
             }
         }
 
@@ -81,15 +95,28 @@ namespace Vigil.App.Services
             if (h != null) h();
         }
 
+        /// <summary>
+        /// Usa un clamd già in ascolto (es. quello del servizio) senza avviarne uno.
+        /// true se risponde.
+        /// </summary>
+        public bool Attach()
+        {
+            if (!Client.Ping())
+                return false;
+            OwnsDaemon = false;
+            OnReady();
+            return true;
+        }
+
         /// <summary>Avvia clamd in background (il caricamento delle firme può richiedere qualche minuto su un PC vecchio).</summary>
         public void Start()
         {
             lock (gate)
             {
                 if (!IsInstalled) { Set(ClamavStatus.Missing, "ClamAV non è installato accanto a Vigil"); return; }
-                if (!HasDatabase) { Set(ClamavStatus.NoDatabase, "Firme di ClamAV assenti: esegui un aggiornamento"); return; }
                 if (clamd != null && !clamd.HasExited) return;
-                if (Client.Ping()) { OnReady(); return; } // già attivo (avvio precedente)
+                if (Attach()) return; // già attivo (avvio precedente o servizio)
+                if (!HasDatabase) { Set(ClamavStatus.NoDatabase, "Firme di ClamAV assenti: esegui un aggiornamento"); return; }
 
                 var conf = WriteClamdConf();
                 var psi = new ProcessStartInfo(Path.Combine(InstallDir, "clamd.exe"), "--config-file=\"" + conf + "\"")
@@ -102,6 +129,7 @@ namespace Vigil.App.Services
                 {
                     clamd = Process.Start(psi);
                     ChildProcessJob.Add(clamd);
+                    OwnsDaemon = true;
                 }
                 catch (Exception e)
                 {
@@ -110,8 +138,7 @@ namespace Vigil.App.Services
                 }
                 Set(ClamavStatus.Starting, "ClamAV sta caricando le firme…");
             }
-            var t = new Thread(WaitReady) { IsBackground = true, Name = "clamd wait" };
-            t.Start();
+            new Thread(WaitReady) { IsBackground = true, Name = "clamd wait" }.Start();
         }
 
         void WaitReady()
@@ -141,24 +168,29 @@ namespace Vigil.App.Services
             Set(ClamavStatus.Ready, VersionText);
         }
 
+        /// <summary>Le firme complete di ClamAV occupano circa 1 GB di RAM.</summary>
         static string MemoryHint()
         {
-            // Le firme complete di ClamAV occupano ~1 GB di RAM.
-            var mem = new Microsoft.VisualBasic.Devices.ComputerInfo().TotalPhysicalMemory;
-            return mem < 1536UL * 1024 * 1024 ? ". Con meno di 1,5 GB di RAM ClamAV potrebbe non riuscire a caricare le firme." : "";
+            var mem = TotalPhysicalMemory();
+            return mem > 0 && mem < 1536UL * 1024 * 1024 ? ". Con meno di 1,5 GB di RAM ClamAV potrebbe non riuscire a caricare le firme." : "";
         }
 
+        /// <summary>Ferma clamd se l'abbiamo avviato noi; altrimenti si limita a staccarsi.</summary>
         public void Stop()
         {
             lock (gate)
             {
-                try { if (Client.Ping()) Client.Shutdown(); } catch (Exception) { }
-                var p = clamd;
-                clamd = null;
-                if (p != null)
+                if (OwnsDaemon)
                 {
-                    try { if (!p.WaitForExit(5000)) p.Kill(); } catch (Exception) { }
+                    try { if (Client.Ping()) Client.Shutdown(); } catch (Exception) { }
+                    var p = clamd;
+                    if (p != null)
+                    {
+                        try { if (!p.WaitForExit(5000)) p.Kill(); } catch (Exception) { }
+                    }
                 }
+                clamd = null;
+                OwnsDaemon = false;
                 Set(ClamavStatus.Disabled, "ClamAV disattivato");
             }
         }
@@ -174,7 +206,7 @@ namespace Vigil.App.Services
                 log("ClamAV non è installato accanto a Vigil");
                 return false;
             }
-            Directory.CreateDirectory(AppPaths.ClamavDbDir);
+            Directory.CreateDirectory(DbDir);
             var conf = WriteFreshclamConf();
             var psi = new ProcessStartInfo(Path.Combine(InstallDir, "freshclam.exe"), "--config-file=\"" + conf + "\" --stdout")
             {
@@ -228,16 +260,17 @@ namespace Vigil.App.Services
             Start();
         }
 
-        static string ClamdLog { get { return Path.Combine(AppPaths.LogDir, "clamd.log"); } }
+        string ClamdLog { get { return Path.Combine(LogDir, "clamd.log"); } }
 
-        static string WriteClamdConf()
+        string WriteClamdConf()
         {
-            Directory.CreateDirectory(AppPaths.LogDir);
+            Directory.CreateDirectory(LogDir);
+            Directory.CreateDirectory(ConfDir);
             var sb = new StringBuilder();
             sb.AppendLine("# Generato da Vigil Legacy: le modifiche vengono sovrascritte.");
             sb.AppendLine("TCPSocket " + Port);
             sb.AppendLine("TCPAddr 127.0.0.1");
-            sb.AppendLine("DatabaseDirectory \"" + AppPaths.ClamavDbDir + "\"");
+            sb.AppendLine("DatabaseDirectory \"" + DbDir + "\"");
             sb.AppendLine("CVDCertsDirectory \"" + Path.Combine(InstallDir, "certs") + "\"");
             sb.AppendLine("LogFile \"" + ClamdLog + "\"");
             sb.AppendLine("LogFileMaxSize 2M");
@@ -248,25 +281,44 @@ namespace Vigil.App.Services
             sb.AppendLine("MaxScanSize 200M");
             // Su sistemi a 32 bit evita di tenere in memoria due copie delle firme durante RELOAD.
             sb.AppendLine("ConcurrentDatabaseReload no");
-            var path = Path.Combine(AppPaths.DataDir, "clamd.conf");
+            var path = Path.Combine(ConfDir, "clamd.conf");
             File.WriteAllText(path, sb.ToString(), new UTF8Encoding(false));
             return path;
         }
 
-        static string WriteFreshclamConf()
+        string WriteFreshclamConf()
         {
-            Directory.CreateDirectory(AppPaths.LogDir);
+            Directory.CreateDirectory(LogDir);
+            Directory.CreateDirectory(ConfDir);
             var sb = new StringBuilder();
             sb.AppendLine("# Generato da Vigil Legacy: le modifiche vengono sovrascritte.");
-            sb.AppendLine("DatabaseDirectory \"" + AppPaths.ClamavDbDir + "\"");
+            sb.AppendLine("DatabaseDirectory \"" + DbDir + "\"");
             sb.AppendLine("CVDCertsDirectory \"" + Path.Combine(InstallDir, "certs") + "\"");
             sb.AppendLine("DatabaseMirror database.clamav.net");
-            sb.AppendLine("UpdateLogFile \"" + Path.Combine(AppPaths.LogDir, "freshclam.log") + "\"");
+            sb.AppendLine("UpdateLogFile \"" + Path.Combine(LogDir, "freshclam.log") + "\"");
             sb.AppendLine("LogFileMaxSize 2M");
             sb.AppendLine("LogTime yes");
-            var path = Path.Combine(AppPaths.DataDir, "freshclam.conf");
+            var path = Path.Combine(ConfDir, "freshclam.conf");
             File.WriteAllText(path, sb.ToString(), new UTF8Encoding(false));
             return path;
+        }
+
+        // ---- memoria fisica (GlobalMemoryStatusEx: da Windows 2000) ----
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct MEMORYSTATUSEX
+        {
+            public uint dwLength, dwMemoryLoad;
+            public ulong ullTotalPhys, ullAvailPhys, ullTotalPageFile, ullAvailPageFile, ullTotalVirtual, ullAvailVirtual, ullAvailExtendedVirtual;
+        }
+
+        [DllImport("kernel32.dll")]
+        static extern bool GlobalMemoryStatusEx(ref MEMORYSTATUSEX m);
+
+        public static ulong TotalPhysicalMemory()
+        {
+            var m = new MEMORYSTATUSEX { dwLength = (uint)Marshal.SizeOf(typeof(MEMORYSTATUSEX)) };
+            return GlobalMemoryStatusEx(ref m) ? m.ullTotalPhys : 0;
         }
     }
 }

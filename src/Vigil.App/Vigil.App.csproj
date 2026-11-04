@@ -14,6 +14,7 @@
   <ItemGroup>
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="Microsoft.VisualBasic" />
+    <Reference Include="System.ServiceProcess" />
     <ProjectReference Include="..\Vigil.Engine\Vigil.Engine.csproj" />
   </ItemGroup>
   <ItemGroup>

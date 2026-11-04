@@ -6,6 +6,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Threading;
 using Vigil.App.Services;
+using Vigil.Engine;
 
 namespace Vigil.App
 {
@@ -24,6 +25,13 @@ namespace Vigil.App
             base.OnStartup(e);
             DispatcherUnhandledException += OnUnhandled;
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
+            // Aiutante elevato (consenso UAC): esegue un comando per il servizio ed esce.
+            if (e.Args.Length == 2 && e.Args[0] == "--rt")
+            {
+                Shutdown(Realtime.RunHelper(e.Args[1]));
+                return;
+            }
 
             instance = new SingleInstance("VigilLegacy");
             if (!instance.IsFirst)
@@ -48,6 +56,9 @@ namespace Vigil.App
             tray.QuickScanRequested += () => { ShowMain(); w.Scan.StartScan("quick", AppState.QuickScanRoots()); w.ShowScan(); };
             tray.UpdateRequested += () => st.RunUpdateAsync();
             tray.ExitRequested += ExitApp;
+            tray.PauseRequested += m => RtCommand(new Vigil.Engine.RtRequest { Cmd = "pause", Minutes = m });
+            tray.ResumeRequested += () => RtCommand(Vigil.Engine.RtRequest.Of("resume"));
+            st.Realtime.EventReceived += ev => Dispatcher.BeginInvoke(new Action(() => OnRealtimeEvent(ev)));
             st.Changed += () => Dispatcher.BeginInvoke(new Action(UpdateTray));
             UpdateTray();
 
@@ -120,11 +131,54 @@ namespace Vigil.App
             Shutdown();
         }
 
+        /// <summary>Comando al servizio in background (può comparire il consenso UAC).</summary>
+        void RtCommand(Vigil.Engine.RtRequest req)
+        {
+            new System.Threading.Thread(() =>
+            {
+                var err = Realtime.Command(req);
+                if (err != null)
+                    Dispatcher.BeginInvoke(new Action(() => ToastWindow.Show("Operazione non riuscita", err, false, 8)));
+            }) { IsBackground = true }.Start();
+        }
+
+        /// <summary>Avvisi per ciò che ha fatto la protezione in tempo reale.</summary>
+        void OnRealtimeEvent(Vigil.Engine.RtEvent ev)
+        {
+            Action openQuarantine = () => { ShowMain(); ((MainWindow)MainWindow).ShowQuarantine(); };
+            var name = string.IsNullOrEmpty(ev.Path) ? "" : Path.GetFileName(ev.Path);
+            switch (ev.Action)
+            {
+                case "quarantined":
+                    ToastWindow.Show("Minaccia bloccata: " + ev.Threat, name + " è stato messo in quarantena." + Environment.NewLine + ev.Path, true, 12,
+                        Tuple.Create("Apri la quarantena", openQuarantine), Tuple.Create<string, Action>("OK", null));
+                    break;
+                case "killed":
+                    ToastWindow.Show("Programma pericoloso fermato", ev.Threat + ": " + name + ". " + ev.Detail + ".", true, 12,
+                        Tuple.Create("Apri la quarantena", openQuarantine), Tuple.Create<string, Action>("OK", null));
+                    break;
+                case "failed":
+                    if (ev.Threat != null)
+                        ToastWindow.Show("Minaccia trovata: " + ev.Threat, ev.Path + Environment.NewLine + ev.Detail, true, 0,
+                            Tuple.Create<string, Action>("Analizza il file", () => { ShowMain(); ((MainWindow)MainWindow).Scan.StartScan("custom", new[] { ev.Path }); ((MainWindow)MainWindow).ShowScan(); }),
+                            Tuple.Create<string, Action>("Ignora", null));
+                    break;
+                case "suspicious":
+                    ToastWindow.Show("File sospetto", name + ": " + ev.Detail, false, 10,
+                        Tuple.Create<string, Action>("Analizza", () => { ShowMain(); ((MainWindow)MainWindow).Scan.StartScan("custom", new[] { ev.Path }); ((MainWindow)MainWindow).ShowScan(); }),
+                        Tuple.Create<string, Action>("Ignora", null));
+                    break;
+            }
+        }
+
         void UpdateTray()
         {
             var st = AppState.Current;
+            var rt = st.Realtime.Status;
+            tray.SetRealtime(rt != null, rt != null && rt.Paused);
             string text;
-            if (st.IsUpdating) text = "aggiornamento in corso";
+            if (rt != null && rt.Paused) text = "protezione sospesa";
+            else if (st.IsUpdating) text = "aggiornamento in corso";
             else if (st.Settings.ClamavEnabled && st.Clamav.Status == ClamavStatus.Starting) text = "avvio di ClamAV";
             else if (st.Settings.ClamavEnabled && !st.Clamav.IsReady) text = "protezione parziale";
             else text = "attivo";
