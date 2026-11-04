@@ -29,6 +29,15 @@
                     <TextBlock Text="Cerca aggiornamenti ogni" Margin="0,8,0,6" />
                     <WrapPanel x:Name="IntervalChips" />
                 </StackPanel>
+                <TextBlock Text="MalwareBazaar (abuse.ch)" FontWeight="SemiBold" Margin="0,16,0,2" />
+                <TextBlock Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,8"
+                           Text="Gli hash dei campioni di malware segnalati nelle ultime 48 ore, accumulati a ogni aggiornamento. Serve una Auth-Key gratuita da auth.abuse.ch; lasciala vuota per non usarlo. Il download usa TLS 1.2/1.3 incluso in Vigil, quindi funziona anche su XP." />
+                <WrapPanel>
+                    <TextBox x:Name="MbKey" Width="320" Margin="0,0,8,8" ToolTip="Auth-Key di abuse.ch" />
+                    <Button Style="{StaticResource Small}" Content="Salva chiave" Click="OnSaveMbKey" Margin="0,0,8,8" />
+                    <Button Style="{StaticResource Small}" Content="Ottieni una chiave…" Click="OnGetMbKey" Margin="0,0,0,8" />
+                </WrapPanel>
+                <TextBlock x:Name="MbInfo" Style="{StaticResource Faint}" />
             </StackPanel>
         </Border>
 

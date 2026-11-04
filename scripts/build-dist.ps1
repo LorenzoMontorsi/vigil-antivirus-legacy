@@ -15,7 +15,7 @@ Remove-Item -Recurse -Force $out -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $out | Out-Null
 $app = Join-Path $root "src\Vigil.App\bin\$Configuration\net40"
 $svc = Join-Path $root "src\Vigil.Service\bin\$Configuration\net40"
-Copy-Item "$app\VigilLegacy.exe", "$app\VigilLegacy.exe.config", "$app\Vigil.Engine.dll" $out
+Copy-Item "$app\VigilLegacy.exe", "$app\VigilLegacy.exe.config", "$app\Vigil.Engine.dll", "$app\BouncyCastle.Crypto.dll" $out
 Copy-Item "$svc\VigilLegacySvc.exe", "$svc\VigilLegacySvc.exe.config" $out
 if (Test-Path "$app\clamav") { Copy-Item -Recurse "$app\clamav" $out } else { Write-Warning 'ClamAV assente: esegui prima scripts\fetch-clamav.ps1' }
 Copy-Item (Join-Path $root 'LICENSE') $out

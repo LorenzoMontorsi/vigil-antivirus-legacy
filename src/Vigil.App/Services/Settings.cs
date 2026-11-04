@@ -40,6 +40,9 @@ namespace Vigil.App.Services
         [DataMember(Name = "update_interval_hours")] public int UpdateIntervalHours = 4;
         [DataMember(Name = "exclusions")] public Exclusions Exclusions = new Exclusions();
 
+        /// <summary>Auth-Key gratuita di abuse.ch per MalwareBazaar (vuota = disattivato).</summary>
+        [DataMember(Name = "malwarebazaar_key")] public string MalwareBazaarKey = "";
+
         /// <summary>Avvia Vigil (nascosto nell'area di notifica) all'accesso a Windows.</summary>
         [DataMember(Name = "start_at_login")] public bool StartAtLogin = true;
 
@@ -93,6 +96,7 @@ namespace Vigil.App.Services
         [DataMember(Name = "last_scan_threats")] public long LastScanThreats;
         [DataMember(Name = "last_update_unix")] public long LastUpdateUnix;
         [DataMember(Name = "last_update_ok")] public bool LastUpdateOk;
+        [DataMember(Name = "malwarebazaar")] public string MalwareBazaar;
 
         public static AppStateFile Load()
         {

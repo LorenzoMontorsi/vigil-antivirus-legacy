@@ -31,6 +31,8 @@ namespace Vigil.Service
         [DataMember(Name = "clamav_enabled")] public bool ClamavEnabled = true;
         [DataMember(Name = "last_update_unix")] public long LastUpdateUnix;
         [DataMember(Name = "last_update_ok")] public bool LastUpdateOk;
+        [DataMember(Name = "malwarebazaar_key")] public string MalwareBazaarKey;
+        [DataMember(Name = "malwarebazaar")] public string MalwareBazaar;
 
         [OnDeserializing]
         void Defaults(StreamingContext _)
@@ -110,11 +112,9 @@ namespace Vigil.Service
             processes = new ProcessGuard(this);
             processes.Start();
             if (Settings.ClamavEnabled)
-            {
                 Clamav.Start();
-                if (!Clamav.HasDatabase || IsUpdateDue())
-                    RunUpdate();
-            }
+            if ((Settings.ClamavEnabled && !Clamav.HasDatabase) || IsUpdateDue())
+                RunUpdate();
             new Thread(Scheduler) { IsBackground = true, Name = "Vigil aggiornamenti" }.Start();
         }
 
@@ -133,7 +133,7 @@ namespace Vigil.Service
             while (!stopping)
             {
                 Thread.Sleep(TimeSpan.FromMinutes(15));
-                if (Settings.ClamavEnabled && IsUpdateDue())
+                if (IsUpdateDue())
                     RunUpdate();
                 try { if (Cache != null) Cache.Save(); } catch (Exception) { }
             }
@@ -153,9 +153,27 @@ namespace Vigil.Service
             try
             {
                 Emit("update", null, null, "Aggiornamento delle firme avviato", "info");
-                bool ok = Clamav.UpdateDatabase(line => Emit("update", null, null, "ClamAV: " + line, "info"));
-                if (ok)
-                    Clamav.AfterUpdate();
+                bool ok = true;
+                if (Settings.ClamavEnabled)
+                {
+                    ok = Clamav.UpdateDatabase(line => Emit("update", null, null, "ClamAV: " + line, "info"));
+                    if (ok)
+                        Clamav.AfterUpdate();
+                }
+                if (!string.IsNullOrEmpty(Settings.MalwareBazaarKey))
+                {
+                    Emit("update", null, null, "MalwareBazaar: download degli hash recenti…", "info");
+                    try
+                    {
+                        Settings.MalwareBazaar = Feeds.UpdateMalwareBazaar(ServicePaths.Signatures, Settings.MalwareBazaarKey);
+                    }
+                    catch (Exception e)
+                    {
+                        ok = false;
+                        Settings.MalwareBazaar = "errore: " + e.Message;
+                    }
+                    Emit("update", null, null, "MalwareBazaar: " + Settings.MalwareBazaar, "info");
+                }
                 ReloadSignatures();
                 Settings.LastUpdateUnix = FileUtil.NowUnix();
                 Settings.LastUpdateOk = ok;
@@ -338,6 +356,7 @@ namespace Vigil.Service
                 ProcessMonitor = processes != null && processes.Running,
                 WatchedDrives = files != null ? files.Drives : new List<string>(),
                 Quarantined = CountQuarantined(),
+                MalwareBazaar = string.IsNullOrEmpty(Settings.MalwareBazaarKey) ? null : (Settings.MalwareBazaar ?? "in attesa del primo aggiornamento"),
             };
         }
     }

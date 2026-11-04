@@ -143,6 +143,20 @@ namespace Vigil.Service
                 case "quarantine_delete":
                     core.Quarantine.Delete(req.Id);
                     break;
+                case "feeds":
+                    {
+                        var key = (req.Key ?? "").Trim();
+                        if (key.Length > 0 && !Feeds.IsValidKey(key))
+                            return RtResponse.Fail("chiave non valida");
+                        bool changed = key != (core.Settings.MalwareBazaarKey ?? "");
+                        core.Settings.MalwareBazaarKey = key;
+                        if (changed) core.Settings.MalwareBazaar = null;
+                        core.SaveSettings();
+                        core.Emit("info", null, null, key.Length > 0 ? "MalwareBazaar attivato" : "MalwareBazaar disattivato", null);
+                        if (changed && key.Length > 0)
+                            core.RunUpdateAsync();
+                        break;
+                    }
                 default:
                     return RtResponse.Fail("comando sconosciuto: " + req.Cmd);
             }

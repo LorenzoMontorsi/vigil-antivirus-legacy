@@ -182,6 +182,21 @@ namespace Vigil.App.Services
                         ok = false;
                     }
                 }
+                if (!string.IsNullOrEmpty(Settings.MalwareBazaarKey))
+                {
+                    Log("MalwareBazaar: download degli hash recenti…");
+                    try
+                    {
+                        Persisted.MalwareBazaar = Feeds.UpdateMalwareBazaar(AppPaths.SignaturesDir, Settings.MalwareBazaarKey);
+                        Log("MalwareBazaar: " + Persisted.MalwareBazaar);
+                    }
+                    catch (Exception e)
+                    {
+                        ok = false;
+                        Persisted.MalwareBazaar = "errore: " + e.Message;
+                        Log("MalwareBazaar: " + Persisted.MalwareBazaar);
+                    }
+                }
                 ReloadSignatures();
                 Log(ok ? "Aggiornamento completato" : "Aggiornamento completato con errori");
             }
@@ -221,6 +236,28 @@ namespace Vigil.App.Services
             if (!ServiceMode)
                 return null;
             return Realtime.Command(new RtRequest { Cmd = "exclusions", Exclusions = Settings.Exclusions });
+        }
+
+        /// <summary>Stato di MalwareBazaar: del servizio se c'è, altrimenti dell'app.</summary>
+        public string MalwareBazaarStatus
+        {
+            get { var s = Realtime.Status; return s != null ? s.MalwareBazaar : Persisted.MalwareBazaar; }
+        }
+
+        /// <summary>Salva la chiave di MalwareBazaar (e la passa al servizio). null se riuscito.</summary>
+        public string SetMalwareBazaarKey(string key)
+        {
+            key = (key ?? "").Trim();
+            if (key.Length > 0 && !Feeds.IsValidKey(key))
+                return "chiave non valida";
+            if (ServiceMode)
+            {
+                var err = Realtime.Command(new RtRequest { Cmd = "feeds", Key = key });
+                if (err != null) return err;
+            }
+            Settings.MalwareBazaarKey = key;
+            SaveSettings();
+            return null;
         }
 
         /// <summary>Opzioni di scansione correnti, con ClamAV e cache se attivi.</summary>

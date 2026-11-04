@@ -82,6 +82,8 @@ namespace Vigil.Engine
         [DataMember(Name = "id")] public string Id;
 
         [DataMember(Name = "exclusions")] public Exclusions Exclusions;
+        /// <summary>Per "feeds": Auth-Key di MalwareBazaar (vuota = disattivato).</summary>
+        [DataMember(Name = "key")] public string Key;
 
         public static RtRequest Of(string cmd)
         {
@@ -111,6 +113,7 @@ namespace Vigil.Engine
         [DataMember(Name = "process_monitor")] public bool ProcessMonitor;
         [DataMember(Name = "watched_drives")] public List<string> WatchedDrives;
         [DataMember(Name = "quarantined")] public int Quarantined;
+        [DataMember(Name = "malwarebazaar")] public string MalwareBazaar;
     }
 
     [DataContract]

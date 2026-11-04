@@ -19,6 +19,8 @@ Antivirus open source per **Windows XP, Vista e 7** (e successivi), scritto in *
 | Interfaccia WPF (tema scuro "neon stripes" come Vigil): panoramica, scansione rapida/completa/personalizzata, quarantena, impostazioni, esclusioni | ✅ |
 | ClamAV **legacy** incluso ([port win32 di Gianluigi Tiesi / ClamWin](https://oss.netfarm.it/clamav/), gira da XP): clamd + freshclam gestiti da Vigil | ✅ |
 | Aggiornamento automatico periodico delle firme (intervallo configurabile) | ✅ |
+| Hash di [MalwareBazaar](https://bazaar.abuse.ch/) (ultime 48 ore, accumulati), con Auth-Key gratuita di abuse.ch | ✅ |
+| Client HTTPS con TLS 1.2/1.3 proprio ([BouncyCastle](https://www.bouncycastle.org/)), indipendente da SChannel: funziona su XP senza aggiornamenti POSReady | ✅ |
 | Icona nell'area di notifica con menu, avvio automatico all'accesso (nascosto) | ✅ |
 | Avvisi in basso a destra con azioni (Metti in quarantena, Vedi i risultati, Ignora) | ✅ |
 | «Analizza con Vigil» nel menu del tasto destro (file, cartelle, unità; selezioni multiple in un'unica scansione) | ✅ |
@@ -80,6 +82,14 @@ Il servizio gestisce anche ClamAV e gli aggiornamenti per tutto il PC; l'app com
 `\\.\pipe\VigilLegacy.Service`. Sospendere la protezione, cambiare le esclusioni e ripristinare dalla quarantena
 richiedono un amministratore (su Vista e successivi l'app chiede il consenso UAC).
 
+## HTTPS su XP
+
+SChannel di Windows XP arriva al massimo a TLS 1.0, che i server di oggi rifiutano (i trucchi con gli
+aggiornamenti POSReady aggiungono TLS 1.2 ma con pochi cifrari e vanno installati a mano). Vigil Legacy usa
+il TLS 1.2/1.3 di BouncyCastle (MIT) e verifica da sé i certificati: catena, date e nome del server, con le
+radici di Mozilla incluse (`src/Vigil.Engine/Resources/cacert.pem`, da [curl.se/ca](https://curl.se/docs/caextract.html))
+più quelle di Windows. Anche le firme ECDSA, che la CryptoAPI di XP non conosce.
+
 ## ClamAV su XP
 
 Il ClamAV ufficiale non gira più su XP. Vigil Legacy usa il port win32 "legacy" di Gianluigi Tiesi
@@ -90,11 +100,11 @@ Le firme complete occupano circa 1 GB di RAM: su PC con poca memoria ClamAV si p
 Struttura:
 
 ```
-src/Vigil.Engine    motore (libreria net40): hash, ZIP, euristica PE, Authenticode, quarantena, client clamd, protocollo col servizio
+src/Vigil.Engine    motore (libreria net40): hash, ZIP, euristica PE, Authenticode, quarantena, client clamd, HTTPS, MalwareBazaar, protocollo col servizio
 src/Vigil.App       app WPF (VigilLegacy.exe)
 src/Vigil.Service   servizio della protezione in tempo reale (VigilLegacySvc.exe)
 src/Vigil.Setup     programma di installazione (un solo .exe con i file dentro)
-tests/              test del motore (NUnit) e script di prova nella VM
+tests/              test del motore (NUnit) e script di prova nelle VM (Windows 10 via SSH, Windows XP con tests/vm/xp-create.ps1 e l'agente xp-agent)
 scripts/            download di ClamAV, icona, build della distribuzione
 ```
 

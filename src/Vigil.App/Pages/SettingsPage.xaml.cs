@@ -65,6 +65,11 @@ namespace Vigil.App.Pages
                 : "ClamAV " + bundled + " per Windows legacy (port di Gianluigi Tiesi, progetto ClamWin) · stato: " +
                   (clam.IsReady ? "pronto, " + DashboardPage.ShortClamVersion(clam.VersionText) : clam.Detail ?? "non attivo");
 
+            if (!MbKey.IsKeyboardFocusWithin)
+                MbKey.Text = S.MalwareBazaarKey ?? "";
+            var mb = AppState.Current.MalwareBazaarStatus;
+            MbInfo.Text = string.IsNullOrEmpty(S.MalwareBazaarKey) ? "Non attivo." : "Stato: " + (mb ?? "in attesa del primo aggiornamento");
+
             RenderExclusions();
 
             var mem = new Microsoft.VisualBasic.Devices.ComputerInfo();
@@ -165,6 +170,29 @@ namespace Vigil.App.Pages
                     st.Clamav.Stop();
                 }
             }) { IsBackground = true }.Start();
+        }
+
+        void OnSaveMbKey(object sender, RoutedEventArgs e)
+        {
+            var key = MbKey.Text;
+            var st = AppState.Current;
+            new System.Threading.Thread(() =>
+            {
+                var err = st.SetMalwareBazaarKey(key);
+                if (err == null && !st.ServiceMode && !string.IsNullOrEmpty(st.Settings.MalwareBazaarKey))
+                    st.RunUpdate();
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (err != null)
+                        MessageBox.Show("Chiave non salvata: " + err, "Vigil Legacy", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    Refresh();
+                }));
+            }) { IsBackground = true }.Start();
+        }
+
+        void OnGetMbKey(object sender, RoutedEventArgs e)
+        {
+            try { Process.Start("https://auth.abuse.ch/"); } catch (Exception) { }
         }
 
         void OnClearCache(object sender, RoutedEventArgs e)
