@@ -53,7 +53,11 @@ namespace Vigil.App.Pages
             g.Children.Add(new Border { CornerRadius = new CornerRadius(2), Background = Brush("GradDanger") });
 
             var info = new StackPanel { Margin = new Thickness(14, 0, 14, 0) };
-            info.Children.Add(new TextBlock { Text = it.Threat, FontWeight = FontWeights.SemiBold, Foreground = Brush("Rose") });
+            var type = ThreatInfo.Parse(it.Threat);
+            var title = new TextBlock { FontWeight = FontWeights.SemiBold, Foreground = Brush("Rose"), TextTrimming = TextTrimming.CharacterEllipsis };
+            title.Inlines.Add(it.Threat);
+            title.Inlines.Add(new System.Windows.Documents.Run("   " + type.Display + " · " + type.Description) { FontWeight = FontWeights.Normal, Foreground = Brush("Text2") });
+            info.Children.Add(title);
             info.Children.Add(new TextBlock { Text = it.OriginalPath, TextTrimming = TextTrimming.CharacterEllipsis, ToolTip = it.OriginalPath, Margin = new Thickness(0, 3, 0, 3) });
             info.Children.Add(new TextBlock
             {

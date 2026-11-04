@@ -11,6 +11,7 @@ Antivirus open source per **Windows XP, Vista e 7** (e successivi), scritto in *
 | Funzione | Stato |
 |---|---|
 | Motore: hash SHA-256, EICAR, archivi ZIP annidati (anti zip-bomb), euristica PE | ✅ |
+| Classificazione delle minacce dai nomi delle firme (es. `Win.Trojan.Agent-123-0` → `Trojan:Win/Agent`, «Trojan · Windows · famiglia Agent») | ✅ |
 | Verifica firme Authenticode (anche da catalogo, SHA-1 su XP / SHA-256 da Windows 8) | ✅ |
 | Cache delle scansioni, esclusioni per percorso ed estensione | ✅ |
 | Quarantena cifrata (AES-256 + HMAC-SHA256) con ripristino | ✅ |

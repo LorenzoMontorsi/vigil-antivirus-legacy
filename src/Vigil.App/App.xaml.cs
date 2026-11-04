@@ -147,14 +147,15 @@ namespace Vigil.App
         {
             Action openQuarantine = () => { ShowMain(); ((MainWindow)MainWindow).ShowQuarantine(); };
             var name = string.IsNullOrEmpty(ev.Path) ? "" : Path.GetFileName(ev.Path);
+            var kind = ev.Threat != null ? ThreatInfo.Parse(ev.Threat).Description + Environment.NewLine : "";
             switch (ev.Action)
             {
                 case "quarantined":
-                    ToastWindow.Show("Minaccia bloccata: " + ev.Threat, name + " è stato messo in quarantena." + Environment.NewLine + ev.Path, true, 12,
+                    ToastWindow.Show("Minaccia bloccata: " + ev.Threat, kind + name + " è stato messo in quarantena." + Environment.NewLine + ev.Path, true, 12,
                         Tuple.Create("Apri la quarantena", openQuarantine), Tuple.Create<string, Action>("OK", null));
                     break;
                 case "killed":
-                    ToastWindow.Show("Programma pericoloso fermato", ev.Threat + ": " + name + ". " + ev.Detail + ".", true, 12,
+                    ToastWindow.Show("Programma pericoloso fermato", kind + ev.Threat + ": " + name + ". " + ev.Detail + ".", true, 12,
                         Tuple.Create("Apri la quarantena", openQuarantine), Tuple.Create<string, Action>("OK", null));
                     break;
                 case "failed":

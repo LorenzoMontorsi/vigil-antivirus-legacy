@@ -30,7 +30,10 @@ namespace Vigil.App.Services
             {
                 var v = Result.Verdict;
                 if (v.Kind == VerdictKind.Infected)
-                    return SourceName(v.Source) + (v.Location != null ? " · nell'archivio: " + v.Location : "");
+                {
+                    var t = ThreatInfo.Parse(v.Threat, v.Source);
+                    return t.Display + " · " + t.Description + " · " + SourceName(v.Source) + (v.Location != null ? " · nell'archivio: " + v.Location : "");
+                }
                 return string.Join(" · ", v.Reasons);
             }
         }
