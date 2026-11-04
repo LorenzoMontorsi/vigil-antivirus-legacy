@@ -15,6 +15,7 @@ namespace Vigil.Setup
         readonly bool uninstall;
         Stage stage = Stage.Options;
         bool succeeded;
+        bool rebootPending;
         string installedDir;
 
         public MainWindow()
@@ -77,6 +78,8 @@ namespace Vigil.Setup
 
         void OnCancel(object sender, RoutedEventArgs e)
         {
+            if (rebootPending)
+                Installer.CancelReboot(); // "Annulla riavvio"
             Close();
         }
 
@@ -84,6 +87,14 @@ namespace Vigil.Setup
         {
             if (stage == Stage.Done)
             {
+                if (rebootPending)
+                {
+                    // "Riavvia ora": annulla il conto alla rovescia e riavvia subito.
+                    Installer.CancelReboot();
+                    Installer.ScheduleReboot(0);
+                    Close();
+                    return;
+                }
                 if (succeeded && !uninstall && LaunchBox.IsChecked == true)
                     Installer.LaunchAsUser(Path.Combine(installedDir, "VigilLegacy.exe"));
                 Close();
@@ -156,6 +167,28 @@ namespace Vigil.Setup
                 DoneText.Text = service
                     ? "La protezione in tempo reale è attiva. Al primo avvio vengono scaricate le firme di ClamAV (circa 300 MB): su una connessione lenta ci vuole un po'."
                     : "Puoi avviare le scansioni quando vuoi. La protezione in tempo reale si può aggiungere ripetendo l'installazione.";
+
+                // Su Windows a 64 bit l'autodifesa del driver richiede la modalità test e un riavvio:
+                // la si attiva da soli e si riavvia tra un minuto (annullabile).
+                if (service && Installer.DriverNeeds64BitEnable(installedDir))
+                {
+                    var err = Installer.EnableDriver64(installedDir);
+                    if (err == null)
+                    {
+                        rebootPending = true;
+                        Installer.ScheduleReboot(60);
+                        LaunchBox.Visibility = Visibility.Collapsed;
+                        DoneText.Text += "\n\nAutodifesa a 64 bit: ho attivato la modalità test di Windows (comparirà una scritta in basso a destra, è normale). " +
+                                         "Il PC si riavvia tra un minuto per completare.";
+                        NextButton.Content = "Riavvia ora";
+                        CancelButton.Visibility = Visibility.Visible;
+                        CancelButton.Content = "Annulla riavvio";
+                    }
+                    else
+                    {
+                        DoneText.Text += "\n\nAutodifesa a 64 bit non attivata (" + err + "). Puoi riprovare più tardi con «abilita-driver-64bit.cmd».";
+                    }
+                }
             }
         }
     }

@@ -54,7 +54,7 @@ la modifica, la cancellazione e la rinomina dei file di Vigil). Gli script di pr
 Ci sono **due edizioni**, da scegliere in base al Windows in uso:
 
 - **`VigilLegacySetup-<versione>-x86.exe`** — per Windows **a 32 bit** (XP, 7 x86). L'autodifesa a livello di driver è attiva da subito.
-- **`VigilLegacySetup-<versione>-x64.exe`** — per Windows **a 64 bit** (XP x64, 7 x64). Identica, ma con il driver a 64 bit. Poiché Windows a 64 bit carica solo driver firmati e il nostro è autofirmato, l'autodifesa del driver si attiva eseguendo una volta `abilita-driver-64bit.cmd` (come amministratore) e riavviando; senza questo passaggio tutto il resto funziona lo stesso, con la protezione tramite ACL. I programmi veri e propri sono a 32 bit e girano su entrambi i sistemi.
+- **`VigilLegacySetup-<versione>-x64.exe`** — per Windows **a 64 bit** (XP x64, 7 x64). Identica, ma con il driver a 64 bit. Poiché Windows a 64 bit carica solo driver firmati e il nostro è autofirmato, a fine installazione il setup **da solo** rende fidato il certificato di prova, attiva la modalità *test-signing* di Windows e **riavvia** (con un conto alla rovescia annullabile): dopo il riavvio l'autodifesa del driver è attiva, senza che l'utente faccia altro. In silenzio: `/reboot` per riavviare in automatico. Lo stesso si può rifare a mano con `abilita-driver-64bit.cmd`. I programmi veri e propri sono a 32 bit e girano su entrambi i sistemi.
 
 `VigilLegacySetup-<versione>-<arch>.exe` (va eseguito da amministratore) installa tutto in `Program Files\Vigil Legacy`:
 app, servizio della protezione in tempo reale e ClamAV legacy. Alla prima esecuzione il servizio scarica

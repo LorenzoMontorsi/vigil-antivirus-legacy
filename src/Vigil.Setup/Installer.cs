@@ -199,6 +199,67 @@ namespace Vigil.Setup
             try { Run(Path.Combine(Environment.SystemDirectory, "fltmc.exe"), "unload vigilflt"); } catch (Exception) { }
         }
 
+        // ---- autodifesa a livello di driver sui 64 bit ----
+
+        /// <summary>
+        /// Il vero system32: un processo a 32 bit (com'è il setup) su Windows a 64 bit verrebbe deviato
+        /// in SysWOW64, quindi per fltmc/sc/bcdedit e per la cartella drivers si usa l'alias "Sysnative".
+        /// </summary>
+        static string SysDir
+        {
+            get
+            {
+                if (Environment.Is64BitOperatingSystem && !Environment.Is64BitProcess)
+                {
+                    var sn = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Sysnative");
+                    if (Directory.Exists(sn)) return sn;
+                }
+                return Environment.SystemDirectory;
+            }
+        }
+
+        /// <summary>C'è un driver a 64 bit da abilitare? (sistema a 64 bit + driver e certificato presenti).</summary>
+        public static bool DriverNeeds64BitEnable(string dir)
+        {
+            return Environment.Is64BitOperatingSystem
+                && File.Exists(Path.Combine(dir, "vigilflt.sys"))
+                && File.Exists(Path.Combine(dir, "VigilLegacyTest.cer"));
+        }
+
+        /// <summary>
+        /// Prepara l'autodifesa del driver sui 64 bit: rende fidato il certificato di prova e attiva il
+        /// test-signing di Windows. Ha effetto dopo il riavvio. Restituisce null se riuscito, altrimenti il motivo.
+        /// </summary>
+        public static string EnableDriver64(string dir)
+        {
+            try
+            {
+                var cer = Path.Combine(dir, "VigilLegacyTest.cer");
+                int t = Run(Path.Combine(dir, "VigilLegacySvc.exe"), "--trust-cert \"" + cer + "\"");
+                if (t != 0)
+                    return "impossibile rendere fidato il certificato del driver";
+                int b = Run(Path.Combine(SysDir, "bcdedit.exe"), "/set testsigning on");
+                if (b != 0)
+                    return "impossibile attivare la modalità test di Windows (bcdedit). Su alcuni PC va prima disattivato il Secure Boot.";
+                return null;
+            }
+            catch (Exception e)
+            {
+                return e.Message;
+            }
+        }
+
+        /// <summary>Programma un riavvio tra <paramref name="seconds"/> secondi, con avviso annullabile.</summary>
+        public static void ScheduleReboot(int seconds)
+        {
+            Run(Path.Combine(SysDir, "shutdown.exe"), "/r /t " + seconds + " /c \"Vigil Legacy: riavvio per attivare l'autodifesa del driver a 64 bit.\"");
+        }
+
+        public static void CancelReboot()
+        {
+            try { Run(Path.Combine(SysDir, "shutdown.exe"), "/a"); } catch (Exception) { }
+        }
+
         static void RemoveService(string dir)
         {
             // Rimuove anche il driver di autodifesa (servizio del filtro + file in system32\drivers).

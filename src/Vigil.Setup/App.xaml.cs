@@ -27,7 +27,18 @@ namespace Vigil.Setup
                     if (args.Contains("/uninstall"))
                         Installer.Uninstall(Installer.ExistingDir() ?? AppDomain.CurrentDomain.BaseDirectory.TrimEnd('\\'), args.Contains("/removedata"), quiet);
                     else
-                        Installer.Install(Installer.ExistingDir() ?? Installer.DefaultDir, !args.Contains("/noservice"), true, quiet);
+                    {
+                        var dir = Installer.ExistingDir() ?? Installer.DefaultDir;
+                        bool service = !args.Contains("/noservice");
+                        Installer.Install(dir, service, true, quiet);
+                        // Sui 64 bit, attiva l'autodifesa del driver (certificato + test-signing); riavvia solo con /reboot.
+                        if (service && Installer.DriverNeeds64BitEnable(dir))
+                        {
+                            Installer.EnableDriver64(dir);
+                            if (args.Contains("/reboot"))
+                                Installer.ScheduleReboot(5);
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
