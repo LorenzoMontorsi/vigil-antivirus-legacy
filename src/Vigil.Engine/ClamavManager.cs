@@ -260,6 +260,84 @@ namespace Vigil.Engine
             Start();
         }
 
+        /// <summary>Le regole YARA installate vengono caricate da clamd come una qualsiasi firma.</summary>
+        public string YaraRulesPath { get { return Path.Combine(DbDir, "vigil-yara.yar"); } }
+
+        public bool HasYaraRules { get { return File.Exists(YaraRulesPath); } }
+
+        /// <summary>
+        /// Verifica le regole YARA con clamscan e, se si caricano, le installa nella cartella delle firme
+        /// (clamd le userà). Una regola che clamd non sa caricare impedirebbe l'avvio del demone: per questo
+        /// si prova prima con clamscan su un file di esempio, e solo se va a buon fine si sostituisce.
+        /// Restituisce null se riuscito (e in <paramref name="rulesLoaded"/> il numero di regole), altrimenti il motivo.
+        /// </summary>
+        public string InstallYaraRules(byte[] rules, out int rulesLoaded)
+        {
+            rulesLoaded = 0;
+            if (!IsInstalled)
+                return "ClamAV non è installato";
+            Directory.CreateDirectory(DbDir);
+            var tmpYar = Path.Combine(Path.GetTempPath(), "vigil-yara-" + Guid.NewGuid().ToString("N") + ".yar");
+            var tmpFile = Path.Combine(Path.GetTempPath(), "vigil-yara-test-" + Guid.NewGuid().ToString("N") + ".bin");
+            try
+            {
+                File.WriteAllBytes(tmpYar, rules);
+                File.WriteAllBytes(tmpFile, new byte[] { 0x4D, 0x5A, 0x90, 0x00, 0x03 });
+                var psi = new ProcessStartInfo(Path.Combine(InstallDir, "clamscan.exe"),
+                    "-d \"" + tmpYar + "\" --no-summary \"" + tmpFile + "\"")
+                {
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    WorkingDirectory = InstallDir,
+                };
+                var err = new StringBuilder();
+                using (var p = Process.Start(psi))
+                {
+                    ChildProcessJob.Add(p);
+                    p.OutputDataReceived += (s, e) => { };
+                    p.ErrorDataReceived += (s, e) => { if (!string.IsNullOrEmpty(e.Data)) err.AppendLine(e.Data); };
+                    p.BeginOutputReadLine();
+                    p.BeginErrorReadLine();
+                    if (!p.WaitForExit(5 * 60 * 1000))
+                    {
+                        try { p.Kill(); } catch (Exception) { }
+                        return "la verifica delle regole YARA non è terminata";
+                    }
+                    p.WaitForExit();
+                    // clamscan: 0 = nessun rilevamento, 1 = rilevato, 2 = errore (anche di caricamento del database).
+                    if (p.ExitCode == 2)
+                    {
+                        var msg = err.ToString().Trim();
+                        return "regole YARA non caricabili" + (msg.Length > 0 ? ": " + (msg.Length > 300 ? msg.Substring(0, 300) : msg) : "");
+                    }
+                }
+                foreach (var line in Encoding.UTF8.GetString(rules).Split('\n'))
+                {
+                    var t = line.TrimStart();
+                    if (t.StartsWith("rule ") || t.StartsWith("private rule ") || t.StartsWith("global rule "))
+                        rulesLoaded++;
+                }
+                File.Copy(tmpYar, YaraRulesPath, true);
+                return null;
+            }
+            catch (Exception e)
+            {
+                return e.Message;
+            }
+            finally
+            {
+                try { File.Delete(tmpYar); } catch (Exception) { }
+                try { File.Delete(tmpFile); } catch (Exception) { }
+            }
+        }
+
+        public void RemoveYaraRules()
+        {
+            try { if (File.Exists(YaraRulesPath)) File.Delete(YaraRulesPath); } catch (Exception) { }
+        }
+
         string ClamdLog { get { return Path.Combine(LogDir, "clamd.log"); } }
 
         string WriteClamdConf()

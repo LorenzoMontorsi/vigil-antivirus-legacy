@@ -31,6 +31,8 @@ namespace Vigil.Service
         [DataMember(Name = "update_interval_hours")] public int UpdateIntervalHours = 4;
         [DataMember(Name = "clamav_enabled")] public bool ClamavEnabled = true;
         [DataMember(Name = "anti_ransomware")] public bool AntiRansomware = true;
+        [DataMember(Name = "yara_package")] public string YaraPackage = "none";
+        [DataMember(Name = "yara")] public string Yara;
         [DataMember(Name = "last_update_unix")] public long LastUpdateUnix;
         [DataMember(Name = "last_update_ok")] public bool LastUpdateOk;
         [DataMember(Name = "malwarebazaar_key")] public string MalwareBazaarKey;
@@ -43,6 +45,7 @@ namespace Vigil.Service
             UpdateIntervalHours = 4;
             ClamavEnabled = true;
             AntiRansomware = true;
+            YaraPackage = "none";
         }
     }
 
@@ -163,8 +166,9 @@ namespace Vigil.Service
                 if (Settings.ClamavEnabled)
                 {
                     ok = Clamav.UpdateDatabase(line => Emit("update", null, null, "ClamAV: " + line, "info"));
+                    UpdateYara();
                     if (ok)
-                        Clamav.AfterUpdate();
+                        Clamav.AfterUpdate(); // ricarica clamd con firme ClamAV + regole YARA
                 }
                 if (!string.IsNullOrEmpty(Settings.MalwareBazaarKey))
                 {
@@ -190,6 +194,31 @@ namespace Vigil.Service
             {
                 updating = 0;
             }
+        }
+
+        /// <summary>Scarica e installa le regole YARA secondo il pacchetto scelto (o le rimuove se "none").</summary>
+        void UpdateYara()
+        {
+            var pkg = (Settings.YaraPackage ?? "none").Trim();
+            if (pkg == "none" || pkg.Length == 0)
+            {
+                if (Clamav.HasYaraRules) Clamav.RemoveYaraRules();
+                Settings.Yara = null;
+                return;
+            }
+            Emit("update", null, null, "Regole YARA (" + pkg + "): download da YARA-Forge…", "info");
+            try
+            {
+                var rules = Feeds.FetchYaraForge(pkg);
+                int n;
+                var err = Clamav.InstallYaraRules(rules, out n);
+                Settings.Yara = err == null ? n + " regole (" + pkg + ")" : "errore: " + err;
+            }
+            catch (Exception e)
+            {
+                Settings.Yara = "errore: " + e.Message;
+            }
+            Emit("update", null, null, "Regole YARA: " + Settings.Yara, "info");
         }
 
         public void RunUpdateAsync()
@@ -367,6 +396,7 @@ namespace Vigil.Service
                 Quarantined = CountQuarantined(),
                 Ransomware = Ransom != null && Ransom.Enabled,
                 Decoys = Ransom != null ? Ransom.DecoyCount : 0,
+                Yara = Settings.ClamavEnabled && (Settings.YaraPackage ?? "none") != "none" ? Settings.Yara : null,
                 MalwareBazaar = string.IsNullOrEmpty(Settings.MalwareBazaarKey) ? null : (Settings.MalwareBazaar ?? "in attesa del primo aggiornamento"),
             };
         }

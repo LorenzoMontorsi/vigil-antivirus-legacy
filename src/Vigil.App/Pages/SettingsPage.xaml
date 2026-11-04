@@ -29,6 +29,12 @@
                     <TextBlock Text="Cerca aggiornamenti ogni" Margin="0,8,0,6" />
                     <WrapPanel x:Name="IntervalChips" />
                 </StackPanel>
+                <TextBlock Text="Regole YARA (YARA-Forge)" FontWeight="SemiBold" Margin="0,16,0,2" />
+                <TextBlock Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,6"
+                           Text="Regole della comunità caricate dentro ClamAV. «Core» è compatibile e leggera, «Estesa» copre di più ma usa più memoria. Richiede ClamAV attivo. Scaricate via il TLS incluso, quindi funzionano anche su XP." />
+                <WrapPanel x:Name="YaraChips" Margin="0,0,0,2" />
+                <TextBlock x:Name="YaraInfo" Style="{StaticResource Faint}" Margin="0,0,0,4" />
+
                 <TextBlock Text="MalwareBazaar (abuse.ch)" FontWeight="SemiBold" Margin="0,16,0,2" />
                 <TextBlock Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,8"
                            Text="Gli hash dei campioni di malware segnalati nelle ultime 48 ore, accumulati a ogni aggiornamento. Serve una Auth-Key gratuita da auth.abuse.ch; lasciala vuota per non usarlo. Il download usa TLS 1.2/1.3 incluso in Vigil, quindi funziona anche su XP." />

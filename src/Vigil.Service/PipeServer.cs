@@ -148,6 +148,20 @@ namespace Vigil.Service
                     core.SaveSettings();
                     core.Ransom.SetEnabled(req.On);
                     break;
+                case "yara":
+                    {
+                        var pkg = (req.Package ?? "none").Trim();
+                        if (pkg != "none" && pkg != "core" && pkg != "extended")
+                            return RtResponse.Fail("pacchetto YARA sconosciuto");
+                        bool changed = pkg != (core.Settings.YaraPackage ?? "none");
+                        core.Settings.YaraPackage = pkg;
+                        if (changed) core.Settings.Yara = null;
+                        core.SaveSettings();
+                        core.Emit("info", null, null, pkg == "none" ? "Regole YARA disattivate" : "Regole YARA impostate su " + pkg, null);
+                        if (changed)
+                            core.RunUpdateAsync();
+                        break;
+                    }
                 case "feeds":
                     {
                         var key = (req.Key ?? "").Trim();

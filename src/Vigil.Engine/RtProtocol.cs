@@ -86,6 +86,8 @@ namespace Vigil.Engine
         [DataMember(Name = "key")] public string Key;
         /// <summary>Per "antiransom": attivazione dello scudo.</summary>
         [DataMember(Name = "on")] public bool On;
+        /// <summary>Per "yara": pacchetto di regole ("none"/"core"/"extended").</summary>
+        [DataMember(Name = "package")] public string Package;
 
         public static RtRequest Of(string cmd)
         {
@@ -118,6 +120,7 @@ namespace Vigil.Engine
         [DataMember(Name = "malwarebazaar")] public string MalwareBazaar;
         [DataMember(Name = "ransomware")] public bool Ransomware;
         [DataMember(Name = "decoys")] public int Decoys;
+        [DataMember(Name = "yara")] public string Yara;
     }
 
     [DataContract]

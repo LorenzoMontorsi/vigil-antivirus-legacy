@@ -31,6 +31,12 @@ namespace Vigil.App.Pages
                 c.Checked += (s, e) => { if (!loading) { S.UpdateIntervalHours = (int)((RadioButton)s).Tag; Save(); } };
                 IntervalChips.Children.Add(c);
             }
+            foreach (var y in new[] { new[] { "none", "Nessuna" }, new[] { "core", "Core" }, new[] { "extended", "Estesa" } })
+            {
+                var c = new RadioButton { Content = y[1], Style = (Style)FindResource("Chip"), GroupName = "yara", Tag = y[0] };
+                c.Checked += (s, e) => { if (!loading) OnYara((string)((RadioButton)s).Tag); };
+                YaraChips.Children.Add(c);
+            }
         }
 
         static Settings S { get { return AppState.Current.Settings; } }
@@ -53,6 +59,8 @@ namespace Vigil.App.Pages
                 c.IsChecked = (int)c.Tag == S.MaxFileSizeMb;
             foreach (RadioButton c in IntervalChips.Children)
                 c.IsChecked = (int)c.Tag == S.UpdateIntervalHours;
+            foreach (RadioButton c in YaraChips.Children)
+                c.IsChecked = (string)c.Tag == (S.YaraPackage ?? "none");
             loading = false;
 
             var clam = AppState.Current.Clamav;
@@ -73,6 +81,13 @@ namespace Vigil.App.Pages
                 : S.AntiRansomware
                 ? "Attivo · " + (rt != null ? rt.Decoys : 0) + " file-esca disseminati nelle cartelle dei documenti."
                 : "Disattivato.";
+
+            var yara = AppState.Current.YaraStatus;
+            YaraInfo.Text = (S.YaraPackage ?? "none") == "none"
+                ? "Nessuna regola YARA caricata."
+                : !S.ClamavEnabled && !AppState.Current.ServiceMode
+                ? "Richiede ClamAV attivo."
+                : "Stato: " + (yara ?? "in attesa del prossimo aggiornamento");
 
             if (!MbKey.IsKeyboardFocusWithin)
                 MbKey.Text = S.MalwareBazaarKey ?? "";
@@ -178,6 +193,24 @@ namespace Vigil.App.Pages
                 {
                     st.Clamav.Stop();
                 }
+            }) { IsBackground = true }.Start();
+        }
+
+        void OnYara(string package)
+        {
+            var st = AppState.Current;
+            YaraInfo.Text = package == "none" ? "Rimozione delle regole YARA…" : "Scaricamento delle regole YARA (" + package + ")…";
+            new System.Threading.Thread(() =>
+            {
+                var err = st.SetYaraPackage(package);
+                if (err == null && !st.ServiceMode && st.Settings.ClamavEnabled)
+                    st.RunUpdate();
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (err != null)
+                        MessageBox.Show("Non applicato: " + err, "Vigil Legacy", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    Refresh();
+                }));
             }) { IsBackground = true }.Start();
         }
 

@@ -182,6 +182,31 @@ namespace Vigil.App.Services
                         ok = false;
                     }
                 }
+                if (Settings.ClamavEnabled && (Settings.YaraPackage ?? "none") != "none")
+                {
+                    Log("Regole YARA (" + Settings.YaraPackage + "): download da YARA-Forge…");
+                    try
+                    {
+                        var rules = Feeds.FetchYaraForge(Settings.YaraPackage);
+                        int n;
+                        var yerr = Clamav.InstallYaraRules(rules, out n);
+                        Persisted.Yara = yerr == null ? n + " regole (" + Settings.YaraPackage + ")" : "errore: " + yerr;
+                        if (yerr != null) ok = false;
+                        Log("Regole YARA: " + Persisted.Yara);
+                        Clamav.AfterUpdate();
+                    }
+                    catch (Exception e)
+                    {
+                        ok = false;
+                        Persisted.Yara = "errore: " + e.Message;
+                        Log("Regole YARA: " + Persisted.Yara);
+                    }
+                }
+                else if (Clamav.HasYaraRules)
+                {
+                    Clamav.RemoveYaraRules();
+                    Persisted.Yara = null;
+                }
                 if (!string.IsNullOrEmpty(Settings.MalwareBazaarKey))
                 {
                     Log("MalwareBazaar: download degli hash recenti…");
@@ -242,6 +267,26 @@ namespace Vigil.App.Services
         public string MalwareBazaarStatus
         {
             get { var s = Realtime.Status; return s != null ? s.MalwareBazaar : Persisted.MalwareBazaar; }
+        }
+
+        /// <summary>Stato delle regole YARA: del servizio se c'è, altrimenti dell'app.</summary>
+        public string YaraStatus
+        {
+            get { var s = Realtime.Status; return s != null ? s.Yara : Persisted.Yara; }
+        }
+
+        /// <summary>Imposta il pacchetto YARA (e lo passa al servizio). null se riuscito.</summary>
+        public string SetYaraPackage(string package)
+        {
+            package = (package ?? "none").Trim();
+            if (ServiceMode)
+            {
+                var err = Realtime.Command(new RtRequest { Cmd = "yara", Package = package });
+                if (err != null) return err;
+            }
+            Settings.YaraPackage = package;
+            SaveSettings();
+            return null;
         }
 
         /// <summary>Salva la chiave di MalwareBazaar (e la passa al servizio). null se riuscito.</summary>

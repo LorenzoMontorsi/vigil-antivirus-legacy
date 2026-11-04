@@ -67,6 +67,29 @@ namespace Vigil.Engine
             return (known.Count - before) + " nuovi hash, " + known.Count + " in totale";
         }
 
+        /// <summary>
+        /// Scarica il pacchetto di regole [YARA-Forge](https://github.com/YARAHQ/yara-forge) scelto
+        /// ("core" = compatibile e leggero, "extended" = più ampio) e restituisce il file .yar.
+        /// Passa per il nostro client TLS, quindi funziona anche su XP.
+        /// </summary>
+        public static byte[] FetchYaraForge(string package)
+        {
+            if (package != "core" && package != "extended" && package != "full")
+                throw new ArgumentException("pacchetto YARA sconosciuto: " + package);
+            var url = "https://github.com/YARAHQ/yara-forge/releases/latest/download/yara-forge-rules-" + package + ".zip";
+            var r = Https.Get(url, MaxDownload);
+            var z = ZipReader.Open(r.Body, 1000);
+            foreach (var e in z.Entries)
+                if (!e.IsDirectory && e.Name.EndsWith(".yar", StringComparison.OrdinalIgnoreCase))
+                {
+                    var rules = z.Extract(e, MaxDownload);
+                    if (rules == null || rules.Length == 0)
+                        throw new IOException("regole YARA vuote");
+                    return rules;
+                }
+            throw new IOException("nessun file .yar nel pacchetto YARA-Forge");
+        }
+
         static byte[] FirstCsv(byte[] zip)
         {
             var z = ZipReader.Open(zip, 16);

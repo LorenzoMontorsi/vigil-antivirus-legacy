@@ -20,6 +20,7 @@ Antivirus open source per **Windows XP, Vista e 7** (e successivi), scritto in *
 | ClamAV **legacy** incluso ([port win32 di Gianluigi Tiesi / ClamWin](https://oss.netfarm.it/clamav/), gira da XP): clamd + freshclam gestiti da Vigil | ✅ |
 | Aggiornamento automatico periodico delle firme (intervallo configurabile) | ✅ |
 | Hash di [MalwareBazaar](https://bazaar.abuse.ch/) (ultime 48 ore, accumulati), con Auth-Key gratuita di abuse.ch | ✅ |
+| Regole [YARA-Forge](https://github.com/YARAHQ/yara-forge) (core/estesa) caricate in ClamAV, validate con clamscan prima dell'uso | ✅ provato su XP SP3 |
 | Client HTTPS con TLS 1.2/1.3 proprio ([BouncyCastle](https://www.bouncycastle.org/)), indipendente da SChannel: funziona su XP senza aggiornamenti POSReady | ✅ |
 | Icona nell'area di notifica con menu, avvio automatico all'accesso (nascosto) | ✅ |
 | Avvisi in basso a destra con azioni (Metti in quarantena, Vedi i risultati, Ignora) | ✅ |
@@ -34,8 +35,9 @@ Provato su **Windows XP SP3 (italiano)** in una macchina virtuale VMware: instal
 interfaccia WPF disegnata correttamente, ClamAV legacy 1.5.2 con le firme ufficiali complete scaricate da
 freshclam e clamd pronto, protezione in tempo reale che mette in quarantena un file infetto appena scritto e
 termina un programma infetto appena avviato, e scudo anti-ransomware che ferma un finto cifratore non firmato
-non appena tocca un file-esca. Gli script di prova sono in `tests/vm` (`xp-create.ps1` crea la VM,
-`xp.ps1` la comanda tramite l'agente `xp-agent`).
+non appena tocca un file-esca, e regole YARA-Forge (5133 regole del pacchetto «core») scaricate da GitHub con
+il TLS incluso, validate con clamscan e caricate da clamd. Gli script di prova sono in `tests/vm`
+(`xp-create.ps1` crea la VM, `xp.ps1` la comanda tramite l'agente `xp-agent`).
 
 ## Requisiti
 

@@ -39,6 +39,9 @@ namespace Vigil.App.Services
         /// <summary>Scudo anti-ransomware del servizio (file-esca + rilevamento delle ondate).</summary>
         [DataMember(Name = "anti_ransomware")] public bool AntiRansomware = true;
 
+        /// <summary>Regole YARA caricate in ClamAV: "none" / "core" / "extended".</summary>
+        [DataMember(Name = "yara_package")] public string YaraPackage = "none";
+
         [DataMember(Name = "auto_update")] public bool AutoUpdate = true;
         [DataMember(Name = "update_interval_hours")] public int UpdateIntervalHours = 4;
         [DataMember(Name = "exclusions")] public Exclusions Exclusions = new Exclusions();
@@ -59,6 +62,7 @@ namespace Vigil.App.Services
             // per i campi assenti nei file di versioni precedenti.
             Heuristics = ScanArchives = TrustMicrosoft = UseCache = ClamavEnabled = AutoUpdate = StartAtLogin = ContextMenu = true;
             AntiRansomware = true;
+            YaraPackage = "none";
             MaxFileSizeMb = 64;
             UpdateIntervalHours = 4;
             Exclusions = new Exclusions();
@@ -101,6 +105,7 @@ namespace Vigil.App.Services
         [DataMember(Name = "last_update_unix")] public long LastUpdateUnix;
         [DataMember(Name = "last_update_ok")] public bool LastUpdateOk;
         [DataMember(Name = "malwarebazaar")] public string MalwareBazaar;
+        [DataMember(Name = "yara")] public string Yara;
 
         public static AppStateFile Load()
         {
