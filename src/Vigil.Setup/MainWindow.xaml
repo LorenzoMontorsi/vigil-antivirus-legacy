@@ -1,0 +1,116 @@
+<Window x:Class="Vigil.Setup.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Installazione di Vigil Legacy" Width="640" Height="470" ResizeMode="CanMinimize"
+        WindowStartupLocation="CenterScreen" Icon="Assets/vigil.ico"
+        Background="{StaticResource Bg}" FontFamily="{StaticResource UiFont}" FontSize="14"
+        TextOptions.TextFormattingMode="Display" UseLayoutRounding="True">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="190" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Banda laterale con le strisce di Vigil -->
+        <Border Background="{StaticResource Bg2}" BorderBrush="{StaticResource Border}" BorderThickness="0,0,1,0" ClipToBounds="True">
+            <Grid>
+                <StackPanel Margin="22,28,0,0">
+                    <Image Source="Assets/logo.png" Width="56" Height="56" HorizontalAlignment="Left" RenderOptions.BitmapScalingMode="HighQuality" />
+                    <TextBlock Text="Vigil" FontFamily="{StaticResource DisplayFont}" FontSize="26" Foreground="{StaticResource GradBrand}" Margin="0,14,0,0" />
+                    <TextBlock Text="LEGACY" FontSize="11" Foreground="{StaticResource Text3}" />
+                    <TextBlock x:Name="VersionLabel" Style="{StaticResource Faint}" Margin="0,18,16,0" />
+                </StackPanel>
+                <Canvas VerticalAlignment="Bottom" Height="150" IsHitTestVisible="False">
+                    <Canvas.RenderTransform>
+                        <RotateTransform Angle="-18" CenterX="95" CenterY="75" />
+                    </Canvas.RenderTransform>
+                    <Rectangle Canvas.Left="30" Canvas.Top="36" Width="230" Height="14" RadiusX="7" RadiusY="7">
+                        <Rectangle.Fill>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop Color="#008B5CF6" Offset="0" />
+                                <GradientStop Color="{StaticResource VioletColor}" Offset="0.4" />
+                                <GradientStop Color="{StaticResource MagentaColor}" Offset="1" />
+                            </LinearGradientBrush>
+                        </Rectangle.Fill>
+                    </Rectangle>
+                    <Rectangle Canvas.Left="-10" Canvas.Top="58" Width="250" Height="14" RadiusX="7" RadiusY="7">
+                        <Rectangle.Fill>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop Color="#0022D3EE" Offset="0" />
+                                <GradientStop Color="{StaticResource CyanColor}" Offset="0.35" />
+                                <GradientStop Color="{StaticResource TealColor}" Offset="1" />
+                            </LinearGradientBrush>
+                        </Rectangle.Fill>
+                    </Rectangle>
+                    <Rectangle Canvas.Left="55" Canvas.Top="80" Width="200" Height="14" RadiusX="7" RadiusY="7">
+                        <Rectangle.Fill>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop Color="#00A3E635" Offset="0" />
+                                <GradientStop Color="{StaticResource LimeColor}" Offset="0.45" />
+                                <GradientStop Color="{StaticResource AmberColor}" Offset="1" />
+                            </LinearGradientBrush>
+                        </Rectangle.Fill>
+                    </Rectangle>
+                </Canvas>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Column="1" Margin="30,26,30,22">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- 1. Opzioni -->
+            <StackPanel x:Name="OptionsPage">
+                <TextBlock x:Name="WelcomeTitle" Text="Installa Vigil Legacy" Style="{StaticResource H1}" FontSize="24" />
+                <Border Style="{StaticResource TitleBar}" Margin="0,8,0,14" />
+                <TextBlock Style="{StaticResource Muted}" FontSize="13"
+                           Text="Antivirus open source per Windows XP, Vista, 7 e successivi, con il motore ClamAV. Software libero (GPL-3.0): puoi usarlo, studiarlo e modificarlo." />
+                <TextBlock Text="Cartella di installazione" Margin="0,16,0,6" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="DirBox" />
+                    <Button Grid.Column="1" Style="{StaticResource Small}" Content="Sfoglia…" Margin="8,0,0,0" Click="OnBrowse" />
+                </Grid>
+                <CheckBox x:Name="ServiceBox" Style="{StaticResource Toggle}" IsChecked="True" Margin="0,14,0,4"
+                          Content="Protezione in tempo reale" Tag="Un servizio di Windows controlla i file nuovi e i programmi avviati. Usa circa 1 GB di RAM con ClamAV." />
+                <CheckBox x:Name="DesktopBox" Style="{StaticResource Toggle}" IsChecked="True" Content="Collegamento sul desktop" />
+            </StackPanel>
+
+            <!-- 1b. Disinstallazione -->
+            <StackPanel x:Name="UninstallPage" Visibility="Collapsed">
+                <TextBlock Text="Disinstalla Vigil Legacy" Style="{StaticResource H1}" FontSize="24" />
+                <Border Style="{StaticResource TitleBar}" Margin="0,8,0,14" />
+                <TextBlock x:Name="UninstallText" Style="{StaticResource Muted}" FontSize="13" />
+                <CheckBox x:Name="RemoveDataBox" Style="{StaticResource Toggle}" Margin="0,16,0,0"
+                          Content="Elimina anche firme, quarantena e impostazioni" Tag="I file in quarantena verranno cancellati per sempre. Lascialo spento se pensi di reinstallare Vigil." />
+            </StackPanel>
+
+            <!-- 2. Avanzamento -->
+            <StackPanel x:Name="ProgressPage" Visibility="Collapsed" VerticalAlignment="Center">
+                <TextBlock x:Name="ProgressTitle" Text="Installazione in corso…" Style="{StaticResource H2}" FontSize="20" />
+                <Border Height="6" CornerRadius="3" Background="{StaticResource Surface3}" Margin="0,18,0,10">
+                    <Border x:Name="Bar" HorizontalAlignment="Left" Width="0" CornerRadius="3" Background="{StaticResource GradBrand}" />
+                </Border>
+                <TextBlock x:Name="ProgressText" Style="{StaticResource Faint}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+            </StackPanel>
+
+            <!-- 3. Fine -->
+            <StackPanel x:Name="DonePage" Visibility="Collapsed" VerticalAlignment="Center">
+                <Path x:Name="DoneIcon" Data="{StaticResource IconShield}" Stroke="{StaticResource GradOk}" StrokeThickness="2" Width="46" Height="46" Stretch="Uniform" HorizontalAlignment="Left" />
+                <TextBlock x:Name="DoneTitle" Style="{StaticResource H1}" FontSize="24" Margin="0,14,0,8" TextWrapping="Wrap" />
+                <TextBlock x:Name="DoneText" Style="{StaticResource Muted}" FontSize="13" />
+                <CheckBox x:Name="LaunchBox" Style="{StaticResource Toggle}" IsChecked="True" Margin="0,16,0,0" Content="Avvia Vigil Legacy adesso" />
+            </StackPanel>
+
+            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button x:Name="CancelButton" Style="{StaticResource Ghost}" Content="Annulla" Click="OnCancel" />
+                <Button x:Name="NextButton" Style="{StaticResource Primary}" Content="Installa" Margin="10,0,0,0" Click="OnNext" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

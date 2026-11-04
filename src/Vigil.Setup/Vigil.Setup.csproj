@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net40</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>Vigil.Setup</RootNamespace>
+    <AssemblyName>VigilLegacySetup</AssemblyName>
+    <ApplicationIcon>..\Vigil.App\Assets\vigil.ico</ApplicationIcon>
+    <ApplicationManifest>setup.manifest</ApplicationManifest>
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.ServiceProcess" />
+    <!-- Un solo eseguibile: il lettore ZIP del motore è compilato qui dentro, non come DLL. -->
+    <Compile Include="..\Vigil.Engine\ZipReader.cs" Link="ZipReader.cs" />
+    <Page Include="..\Vigil.App\Theme.xaml" Link="Theme.xaml" />
+    <Resource Include="..\Vigil.App\Assets\logo.png" Link="Assets\logo.png" />
+    <Resource Include="..\Vigil.App\Assets\vigil.ico" Link="Assets\vigil.ico" />
+  </ItemGroup>
+  <!-- I file da installare (scripts\build-dist.ps1 crea dist\payload.zip). -->
+  <ItemGroup Condition="Exists('..\..\dist\payload.zip')">
+    <EmbeddedResource Include="..\..\dist\payload.zip" LogicalName="payload.zip" />
+  </ItemGroup>
+</Project>

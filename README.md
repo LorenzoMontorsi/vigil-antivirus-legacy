@@ -24,11 +24,28 @@ Antivirus open source per **Windows XP, Vista e 7** (e successivi), scritto in *
 | Protezione in tempo reale: servizio `VigilLegacy` (SYSTEM) che analizza i file nuovi/modificati su tutti i dischi fissi e i programmi appena avviati (WMI), con quarantena e terminazione automatiche | ✅ provata in VM |
 | Sospensione della protezione dal menu dell'icona (15 min, 1 h, 4 h, fino al riavvio), riservata agli amministratori | ✅ |
 | Quarantena di sistema protetta (solo SYSTEM e amministratori), visibile e gestibile dall'app | ✅ |
-| Installer per XP/7 | 🛠️ da fare |
+| Installer unico (`VigilLegacySetup.exe`): installazione guidata o silenziosa, servizio, collegamenti, «Programmi e funzionalità», disinstallazione | ✅ provato in VM |
 
 ## Requisiti
 
-- Windows XP SP3 o successivi, .NET Framework 4.0 (Client Profile non basta: serve il Framework completo).
+- Windows XP SP3 o successivi (32 o 64 bit).
+- .NET Framework 4.0 completo (il "Client Profile" non basta). Su Windows 7 e successivi di solito c'è già una 4.x;
+  su XP va installato a parte (`dotNetFx40_Full_x86_x64.exe` di Microsoft).
+- Per ClamAV con le firme complete: circa 1 GB di RAM libera. Su PC con meno memoria si può spegnere ClamAV:
+  restano le firme di Vigil, l'euristica e la protezione in tempo reale.
+
+## Installare
+
+`VigilLegacySetup-<versione>.exe` (va eseguito da amministratore) installa tutto in `Program Files\Vigil Legacy`:
+app, servizio della protezione in tempo reale e ClamAV legacy. Alla prima esecuzione il servizio scarica
+le firme di ClamAV (circa 300 MB).
+
+| Comando | Effetto |
+|---|---|
+| `VigilLegacySetup.exe` | installazione guidata |
+| `VigilLegacySetup.exe /silent` | installazione senza finestre, opzioni predefinite (`/noservice` per non installare il servizio) |
+| `VigilLegacySetup.exe /uninstall` | disinstallazione (anche da «Programmi e funzionalità») |
+| `VigilLegacySetup.exe /uninstall /silent /removedata` | disinstallazione silenziosa, eliminando anche firme, quarantena e impostazioni |
 
 ## Compilare
 
@@ -36,6 +53,7 @@ Serve il .NET SDK moderno (8 o successivo) su Windows: compila per `net40` senza
 
 ```powershell
 .\scripts\fetch-clamav.ps1   # ClamAV legacy (versione fissata, SHA-256 verificato) in third_party\clamav
+.\scripts\build-dist.ps1     # Release in dist\VigilLegacy e installer dist\VigilLegacySetup-<versione>.exe
 dotnet build
 dotnet test      # i test girano su .NET 4.8, il codice resta compatibile con 4.0
 ```
@@ -67,6 +85,17 @@ Il ClamAV ufficiale non gira più su XP. Vigil Legacy usa il port win32 "legacy"
 (progetto ClamWin, sorgenti su [github.com/clamwin/clamav-win32](https://github.com/clamwin/clamav-win32)),
 che include OpenSSL e curl recenti: freshclam scarica le firme ufficiali anche dove il TLS di Windows XP non basta.
 Le firme complete occupano circa 1 GB di RAM: su PC con poca memoria ClamAV si può spegnere dalle impostazioni.
+
+Struttura:
+
+```
+src/Vigil.Engine    motore (libreria net40): hash, ZIP, euristica PE, Authenticode, quarantena, client clamd, protocollo col servizio
+src/Vigil.App       app WPF (VigilLegacy.exe)
+src/Vigil.Service   servizio della protezione in tempo reale (VigilLegacySvc.exe)
+src/Vigil.Setup     programma di installazione (un solo .exe con i file dentro)
+tests/              test del motore (NUnit) e script di prova nella VM
+scripts/            download di ClamAV, icona, build della distribuzione
+```
 
 ## Licenza
 
