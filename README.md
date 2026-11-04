@@ -18,7 +18,9 @@ Antivirus open source per **Windows XP, Vista e 7** (e successivi), scritto in *
 | Interfaccia WPF (tema scuro "neon stripes" come Vigil): panoramica, scansione rapida/completa/personalizzata, quarantena, impostazioni, esclusioni | ✅ |
 | ClamAV **legacy** incluso ([port win32 di Gianluigi Tiesi / ClamWin](https://oss.netfarm.it/clamav/), gira da XP): clamd + freshclam gestiti da Vigil | ✅ |
 | Aggiornamento automatico periodico delle firme (intervallo configurabile) | ✅ |
-| Icona nell'area di notifica, avvisi, menu "Analizza con Vigil" | 🛠️ da fare |
+| Icona nell'area di notifica con menu, avvio automatico all'accesso (nascosto) | ✅ |
+| Avvisi in basso a destra con azioni (Metti in quarantena, Vedi i risultati, Ignora) | ✅ |
+| «Analizza con Vigil» nel menu del tasto destro (file, cartelle, unità; selezioni multiple in un'unica scansione) | ✅ |
 | Protezione in tempo reale (servizio) | 🛠️ da fare |
 | Installer per XP/7 | 🛠️ da fare |
 

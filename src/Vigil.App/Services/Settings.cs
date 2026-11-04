@@ -40,12 +40,18 @@ namespace Vigil.App.Services
         [DataMember(Name = "update_interval_hours")] public int UpdateIntervalHours = 4;
         [DataMember(Name = "exclusions")] public Exclusions Exclusions = new Exclusions();
 
+        /// <summary>Avvia Vigil (nascosto nell'area di notifica) all'accesso a Windows.</summary>
+        [DataMember(Name = "start_at_login")] public bool StartAtLogin = true;
+
+        /// <summary>Voce "Analizza con Vigil" nel menu del tasto destro di Esplora risorse.</summary>
+        [DataMember(Name = "context_menu")] public bool ContextMenu = true;
+
         [OnDeserializing]
         void Defaults(StreamingContext _)
         {
             // DataContractJsonSerializer non esegue gli inizializzatori: valori predefiniti
             // per i campi assenti nei file di versioni precedenti.
-            Heuristics = ScanArchives = TrustMicrosoft = UseCache = ClamavEnabled = AutoUpdate = true;
+            Heuristics = ScanArchives = TrustMicrosoft = UseCache = ClamavEnabled = AutoUpdate = StartAtLogin = ContextMenu = true;
             MaxFileSizeMb = 64;
             UpdateIntervalHours = 4;
             Exclusions = new Exclusions();

@@ -48,6 +48,14 @@
 
         <Border Style="{StaticResource Card}">
             <StackPanel>
+                <TextBlock Text="Integrazione con Windows" Style="{StaticResource H2}" Margin="0,0,0,8" />
+                <CheckBox x:Name="StartAtLogin" Style="{StaticResource Toggle}" Content="Avvia Vigil all'accesso a Windows" Tag="Parte nascosto nell'area di notifica (l'icona vicino all'orologio): niente finestre, solo gli avvisi quando serve." Click="OnWindows" />
+                <CheckBox x:Name="ShellMenu" Style="{StaticResource Toggle}" Content="«Analizza con Vigil» nel menu del tasto destro" Tag="Su file, cartelle e unità di Esplora risorse. Selezionando più elementi parte un'unica scansione." Click="OnWindows" />
+            </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource Card}">
+            <StackPanel>
                 <TextBlock Text="Informazioni" Style="{StaticResource H2}" Margin="0,0,0,8" />
                 <TextBlock x:Name="About" Style="{StaticResource Muted}" />
                 <Button Style="{StaticResource Small}" Content="Apri la cartella dei dati" HorizontalAlignment="Left" Margin="0,12,0,0" Click="OnOpenData" />

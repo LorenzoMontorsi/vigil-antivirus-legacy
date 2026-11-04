@@ -45,6 +45,8 @@ namespace Vigil.App.Pages
             AutoQuarantine.IsChecked = S.AutoQuarantine;
             Clamav.IsChecked = S.ClamavEnabled;
             AutoUpdate.IsChecked = S.AutoUpdate;
+            StartAtLogin.IsChecked = S.StartAtLogin;
+            ShellMenu.IsChecked = S.ContextMenu;
             IntervalPanel.Visibility = S.AutoUpdate ? Visibility.Visible : Visibility.Collapsed;
             foreach (RadioButton c in SizeChips.Children)
                 c.IsChecked = (int)c.Tag == S.MaxFileSizeMb;
@@ -112,6 +114,15 @@ namespace Vigil.App.Pages
             S.AutoQuarantine = AutoQuarantine.IsChecked == true;
             S.AutoUpdate = AutoUpdate.IsChecked == true;
             IntervalPanel.Visibility = S.AutoUpdate ? Visibility.Visible : Visibility.Collapsed;
+            Save();
+        }
+
+        void OnWindows(object sender, RoutedEventArgs e)
+        {
+            S.StartAtLogin = StartAtLogin.IsChecked == true;
+            S.ContextMenu = ShellMenu.IsChecked == true;
+            ShellIntegration.ApplyAutostart(S.StartAtLogin);
+            ShellIntegration.ApplyContextMenu(S.ContextMenu);
             Save();
         }
 

@@ -15,6 +15,7 @@ namespace Vigil.App.Pages
         ScanSession session;
         readonly DispatcherTimer timer;
         int shownDetections = -1;
+        bool notified;
         double runner;
 
         public ScanPage()
@@ -45,6 +46,7 @@ namespace Vigil.App.Pages
             }
             session = new ScanSession(kind, roots);
             shownDetections = -1;
+            notified = false;
             DetectionList.Children.Clear();
             session.Completed += () => Dispatcher.BeginInvoke(new Action(Tick));
             ChoicePanel.Visibility = Visibility.Collapsed;
@@ -54,7 +56,9 @@ namespace Vigil.App.Pages
             CancelButton.IsEnabled = true;
             NewButton.Visibility = Visibility.Collapsed;
             Track.Visibility = Visibility.Visible;
-            RootsInfo.Text = roots.Count == 1 ? "Percorso: " + roots[0] : roots.Count + " percorsi: " + string.Join(", ", roots.Take(4).ToArray()) + (roots.Count > 4 ? "…" : "");
+            RootsInfo.Text = roots.Count == 1 ? "Percorso: " + roots[0]
+                : roots.Count + " percorsi: " + string.Join(", ", roots.Take(6).Select(ShortName).ToArray()) + (roots.Count > 6 ? "…" : "");
+            RootsInfo.ToolTip = string.Join(Environment.NewLine, roots.ToArray());
             session.Start();
             timer.Start();
             Tick();
@@ -99,6 +103,11 @@ namespace Vigil.App.Pages
                 StateTitle.Text = s.Cancelled ? "Scansione interrotta" : threats ? "Scansione completata: trovate " + (s.Infected + s.Suspicious) + " minacce" : "Scansione completata: nessuna minaccia";
                 StateIcon.Data = (Geometry)FindResource(threats ? "IconAlert" : "IconShield");
                 StateIcon.Stroke = threats ? Brush("Rose") : Brush("Ok");
+                if (!notified)
+                {
+                    notified = true;
+                    NotifyIfHidden(s);
+                }
             }
 
             if (found.Count != shownDetections || done)
@@ -176,6 +185,30 @@ namespace Vigil.App.Pages
             return found;
         }
 
+        /// <summary>Scansione finita mentre Vigil era nascosto (es. lanciata dal tasto destro e poi chiusa la finestra).</summary>
+        void NotifyIfHidden(ScanSummary s)
+        {
+            var w = Window.GetWindow(this);
+            if (w != null && w.IsVisible && w.WindowState != WindowState.Minimized)
+                return;
+            long n = s.Infected + s.Suspicious;
+            Action open = () => { App.Current.ShowMain(); MainWindow.Instance.ShowScan(); };
+            if (n == 0)
+            {
+                ToastWindow.Show("Scansione completata", s.Scanned.ToString("N0") + " file analizzati, nessuna minaccia.", false, 8,
+                    Tuple.Create("Apri Vigil", open));
+                return;
+            }
+            var actions = new List<Tuple<string, Action>>();
+            if (s.Infected > 0 && !AppState.Current.Settings.AutoQuarantine)
+                actions.Add(Tuple.Create<string, Action>("Metti in quarantena", () => { OnQuarantineAll(null, null); open(); }));
+            actions.Add(Tuple.Create("Vedi i risultati", open));
+            actions.Add(Tuple.Create<string, Action>("Ignora", null));
+            ToastWindow.Show("Trovate " + n + (n == 1 ? " minaccia" : " minacce"),
+                s.Infected + (s.Infected == 1 ? " infetto, " : " infetti, ") + s.Suspicious + (s.Suspicious == 1 ? " sospetto" : " sospetti") +
+                " su " + s.Scanned.ToString("N0") + " file analizzati.", true, 0, actions.ToArray());
+        }
+
         static void Exclude(Detection d)
         {
             var st = AppState.Current;
@@ -183,6 +216,13 @@ namespace Vigil.App.Pages
                 st.Settings.Exclusions.Paths.Add(d.Path);
             st.SaveSettings();
             d.Action = "Escluso dalle scansioni";
+        }
+
+        /// <summary>Nome del file o della cartella; per le unità ("D:\") il percorso intero.</summary>
+        static string ShortName(string path)
+        {
+            var name = System.IO.Path.GetFileName(path.TrimEnd('\\'));
+            return string.IsNullOrEmpty(name) ? path : name;
         }
 
         static Brush Brush(string key)
