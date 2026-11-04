@@ -1,0 +1,61 @@
+;
+; vigilflt.inf - minifilter di autodifesa di Vigil Legacy
+;
+[Version]
+Signature   = "$WINDOWS NT$"
+Class       = "AntiVirus"
+ClassGuid   = {b1d1a169-c54f-4379-81db-bee7d88d7454}
+Provider    = %Provider%
+DriverVer   =
+CatalogFile = vigilflt.cat
+
+[DestinationDirs]
+DefaultDestDir          = 12            ; %windir%\system32\drivers
+Vigilflt.DriverFiles    = 12
+
+[DefaultInstall]
+OptionDesc  = %ServiceDesc%
+CopyFiles   = Vigilflt.DriverFiles
+
+[DefaultInstall.Services]
+AddService  = %ServiceName%,,Vigilflt.Service
+
+[DefaultUninstall]
+DelFiles    = Vigilflt.DriverFiles
+
+[DefaultUninstall.Services]
+DelService  = %ServiceName%,0x200       ; SPSVCINST_STOPSERVICE
+
+[Vigilflt.Service]
+DisplayName    = %ServiceName%
+Description    = %ServiceDesc%
+ServiceBinary  = %12%\vigilflt.sys
+Dependencies   = "FltMgr"
+ServiceType    = 2                       ; SERVICE_FILE_SYSTEM_DRIVER
+StartType      = 3                       ; SERVICE_DEMAND_START (lo avvia il servizio di Vigil)
+ErrorControl   = 1                       ; SERVICE_ERROR_NORMAL
+LoadOrderGroup = "FSFilter Anti-Virus"
+AddReg         = Vigilflt.AddRegistry
+
+[Vigilflt.AddRegistry]
+HKR,"Instances","DefaultInstance",0x00000000,%DefaultInstance%
+HKR,"Instances\"%Instance%,"Altitude",0x00000000,%Altitude%
+HKR,"Instances\"%Instance%,"Flags",0x00010001,0x0
+
+[Vigilflt.DriverFiles]
+vigilflt.sys
+
+[SourceDisksFiles]
+vigilflt.sys = 1,,
+
+[SourceDisksNames]
+1 = %DiskName%,,,
+
+[Strings]
+Provider        = "Vigil Legacy contributors"
+ServiceName     = "vigilflt"
+ServiceDesc     = "Vigil Legacy - protezione dei file (minifilter)"
+DiskName        = "Vigil Legacy"
+DefaultInstance = "Vigil Legacy"
+Instance        = "Vigil Legacy"
+Altitude        = "328010"

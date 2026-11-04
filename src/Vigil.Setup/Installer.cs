@@ -194,10 +194,22 @@ namespace Vigil.Setup
                 }
                 catch (Exception) { }
             }
+            // Scarica il minifilter di autodifesa: altrimenti la cartella del programma resta protetta
+            // e i file non si possono rimuovere.
+            try { Run(Path.Combine(Environment.SystemDirectory, "fltmc.exe"), "unload vigilflt"); } catch (Exception) { }
         }
 
         static void RemoveService(string dir)
         {
+            // Rimuove anche il driver di autodifesa (servizio del filtro + file in system32\drivers).
+            try
+            {
+                Run(Path.Combine(Environment.SystemDirectory, "fltmc.exe"), "unload vigilflt");
+                Run(Path.Combine(Environment.SystemDirectory, "sc.exe"), "delete vigilflt");
+                TryDelete(Path.Combine(Environment.SystemDirectory, "drivers", "vigilflt.sys"));
+            }
+            catch (Exception) { }
+
             if (!ServiceExists())
                 return;
             var svc = Path.Combine(dir, "VigilLegacySvc.exe");

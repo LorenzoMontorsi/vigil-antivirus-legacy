@@ -52,6 +52,8 @@
                 <TextBlock Text="Protezione in tempo reale" Style="{StaticResource H2}" Margin="0,0,0,8" />
                 <CheckBox x:Name="AntiRansom" Style="{StaticResource Toggle}" Content="Scudo anti-ransomware" Tag="Dissemina file-esca nascosti nelle cartelle dei documenti e riconosce le ondate di cifratura (molti file modificati o rinominati con estensioni da riscatto in pochi secondi). Al sospetto ferma i programmi non firmati avviati da poco e ti avvisa. Senza driver è una rete di sicurezza in più, non una garanzia." Click="OnAntiRansom" />
                 <TextBlock x:Name="RtInfo" Style="{StaticResource Faint}" />
+                <CheckBox x:Name="SelfProtect" Style="{StaticResource Toggle}" Margin="0,10,0,0" Content="Autodifesa a livello di driver" Tag="Carica un driver (minifilter) che impedisce a chiunque — malware o amministratore — di modificare, cancellare o rinominare i file di Vigil mentre è in esecuzione. Solo su Windows a 32 bit (XP e 7 x86): sui 64 bit servirebbe un driver firmato." Click="OnSelfProtect" />
+                <TextBlock x:Name="SelfProtectInfo" Style="{StaticResource Faint}" />
             </StackPanel>
         </Border>
 

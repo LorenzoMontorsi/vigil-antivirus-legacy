@@ -1,0 +1,11 @@
+#include <windows.h>
+#include <ntverp.h>
+
+#define VER_FILETYPE                VFT_DRV
+#define VER_FILESUBTYPE             VFT2_DRV_SYSTEM
+#define VER_FILEDESCRIPTION_STR     "Vigil Legacy - protezione dei file (minifilter)"
+#define VER_INTERNALNAME_STR        "vigilflt.sys"
+#define VER_ORIGINALFILENAME_STR    "vigilflt.sys"
+#define VER_LEGALCOPYRIGHT_STR      "Vigil Legacy contributors - GPL-3.0-or-later"
+
+#include "common.ver"

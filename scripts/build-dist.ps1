@@ -18,6 +18,10 @@ $svc = Join-Path $root "src\Vigil.Service\bin\$Configuration\net40"
 Copy-Item "$app\VigilLegacy.exe", "$app\VigilLegacy.exe.config", "$app\Vigil.Engine.dll", "$app\BouncyCastle.Crypto.dll" $out
 Copy-Item "$svc\VigilLegacySvc.exe", "$svc\VigilLegacySvc.exe.config" $out
 if (Test-Path "$app\clamav") { Copy-Item -Recurse "$app\clamav" $out } else { Write-Warning 'ClamAV assente: esegui prima scripts\fetch-clamav.ps1' }
+# Driver di autodifesa a 32 bit (se compilato con scripts\build-driver.ps1). Facoltativo: se manca,
+# Vigil funziona lo stesso, senza l'autodifesa a livello di driver.
+$drv = Join-Path $root 'dist\driver'
+if (Test-Path "$drv\vigilflt.sys") { Copy-Item "$drv\vigilflt.sys", "$drv\vigilflt.inf" $out } else { Write-Warning 'Driver assente: esegui prima scripts\build-driver.ps1 (serve il WDK 7.1)' }
 Copy-Item (Join-Path $root 'LICENSE') $out
 Write-Host "Pronto: $out"
 

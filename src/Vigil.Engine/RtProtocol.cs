@@ -121,6 +121,7 @@ namespace Vigil.Engine
         [DataMember(Name = "ransomware")] public bool Ransomware;
         [DataMember(Name = "decoys")] public int Decoys;
         [DataMember(Name = "yara")] public string Yara;
+        [DataMember(Name = "self_protection")] public bool SelfProtection;
     }
 
     [DataContract]

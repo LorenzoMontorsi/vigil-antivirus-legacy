@@ -275,6 +275,19 @@ namespace Vigil.App.Services
             get { var s = Realtime.Status; return s != null ? s.Yara : Persisted.Yara; }
         }
 
+        /// <summary>Attiva/disattiva l'autodifesa del driver (serve il servizio). null se riuscito.</summary>
+        public string SetSelfProtection(bool on)
+        {
+            if (ServiceMode)
+            {
+                var err = Realtime.Command(new RtRequest { Cmd = "selfprotect", On = on });
+                if (err != null) return err;
+            }
+            Settings.SelfProtection = on;
+            SaveSettings();
+            return null;
+        }
+
         /// <summary>Imposta il pacchetto YARA (e lo passa al servizio). null se riuscito.</summary>
         public string SetYaraPackage(string package)
         {

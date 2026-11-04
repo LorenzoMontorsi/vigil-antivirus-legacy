@@ -27,6 +27,7 @@ Antivirus open source per **Windows XP, Vista e 7** (e successivi), scritto in *
 | «Analizza con Vigil» nel menu del tasto destro (file, cartelle, unità; selezioni multiple in un'unica scansione) | ✅ |
 | Protezione in tempo reale: servizio `VigilLegacy` (SYSTEM) che analizza i file nuovi/modificati su tutti i dischi fissi e i programmi appena avviati (WMI), con quarantena e terminazione automatiche | ✅ provata su XP SP3 |
 | Scudo anti-ransomware (senza driver): file-esca nascosti nelle cartelle dei documenti + rilevamento delle ondate (molti documenti modificati o rinominati con estensioni da riscatto in pochi secondi); ferma i programmi non firmati avviati da poco | ✅ provato su XP SP3 |
+| Autodifesa a livello di driver (minifilter `vigilflt.sys`, solo Windows a 32 bit): impedisce a chiunque — malware o amministratore — di modificare, cancellare o rinominare i file di Vigil mentre è in esecuzione | ✅ provato su XP SP3 |
 | Sospensione della protezione dal menu dell'icona (15 min, 1 h, 4 h, fino al riavvio), riservata agli amministratori | ✅ |
 | Quarantena di sistema protetta (solo SYSTEM e amministratori), visibile e gestibile dall'app | ✅ |
 | Installer unico (`VigilLegacySetup.exe`): installazione guidata o silenziosa, servizio, collegamenti, «Programmi e funzionalità», disinstallazione | ✅ provato in VM |
@@ -35,8 +36,9 @@ Provato su **Windows XP SP3 (italiano)** in una macchina virtuale VMware: instal
 interfaccia WPF disegnata correttamente, ClamAV legacy 1.5.2 con le firme ufficiali complete scaricate da
 freshclam e clamd pronto, protezione in tempo reale che mette in quarantena un file infetto appena scritto e
 termina un programma infetto appena avviato, e scudo anti-ransomware che ferma un finto cifratore non firmato
-non appena tocca un file-esca, e regole YARA-Forge (5133 regole del pacchetto «core») scaricate da GitHub con
-il TLS incluso, validate con clamscan e caricate da clamd. Gli script di prova sono in `tests/vm`
+non appena tocca un file-esca, regole YARA-Forge (5133 regole del pacchetto «core») scaricate da GitHub con
+il TLS incluso, validate con clamscan e caricate da clamd, e autodifesa a livello di driver (il minifilter nega
+la modifica, la cancellazione e la rinomina dei file di Vigil). Gli script di prova sono in `tests/vm`
 (`xp-create.ps1` crea la VM, `xp.ps1` la comanda tramite l'agente `xp-agent`).
 
 ## Requisiti
@@ -88,6 +90,20 @@ Vigil Legacy usa invece un **servizio** (`VigilLegacySvc.exe`, account SYSTEM):
 Il limite onesto: il controllo avviene **subito dopo** la scrittura o l'avvio, non prima. Un programma infetto resta in
 esecuzione per il tempo dell'analisi (di norma pochi millisecondi, grazie alla cache).
 
+### Autodifesa a livello di driver (solo Windows a 32 bit)
+
+C'è però **un** driver: un minifilter (`vigilflt.sys`, cartella `src/Vigil.Driver`, compilato col WDK 7.1) che protegge
+la cartella del programma. Con il driver carico, nessuno — né un malware né un amministratore — può modificare,
+cancellare o rinominare i file di Vigil finché è in esecuzione; le aperture in sola lettura ed esecuzione restano
+permesse. Il servizio lo registra e lo carica da solo all'avvio (`fltmc`), e lo scarica quando si ferma, così
+aggiornamenti e disinstallazione funzionano. Si attiva/disattiva dalle impostazioni.
+
+Un driver kernel deve avere gli stessi bit del sistema e non c'è emulazione per i driver: `vigilflt.sys` è a **32 bit**
+e si carica su **Windows XP e 7 a 32 bit** (dove i driver non firmati sono ammessi). Sui sistemi a **64 bit** servirebbe
+una build a 64 bit **firmata** (o la modalità test-signing), quindi lì l'autodifesa del driver resta disattivata e vale
+la sola protezione tramite ACL. Per ricompilarlo serve il **WDK 7.1.0** (l'ultimo che targettizza XP): vedi
+`scripts/build-driver.ps1`.
+
 Il servizio gestisce anche ClamAV e gli aggiornamenti per tutto il PC; l'app comunica con lui tramite la named pipe
 `\\.\pipe\VigilLegacy.Service`. Sospendere la protezione, cambiare le esclusioni e ripristinare dalla quarantena
 richiedono un amministratore (su Vista e successivi l'app chiede il consenso UAC).
@@ -113,6 +129,7 @@ Struttura:
 src/Vigil.Engine    motore (libreria net40): hash, ZIP, euristica PE, Authenticode, quarantena, client clamd, HTTPS, MalwareBazaar, protocollo col servizio
 src/Vigil.App       app WPF (VigilLegacy.exe)
 src/Vigil.Service   servizio della protezione in tempo reale (VigilLegacySvc.exe)
+src/Vigil.Driver    minifilter di autodifesa a 32 bit (vigilflt.sys, WDK 7.1)
 src/Vigil.Setup     programma di installazione (un solo .exe con i file dentro)
 tests/              test del motore (NUnit) e script di prova nelle VM (Windows 10 via SSH, Windows XP con tests/vm/xp-create.ps1 e l'agente xp-agent)
 scripts/            download di ClamAV, icona, build della distribuzione

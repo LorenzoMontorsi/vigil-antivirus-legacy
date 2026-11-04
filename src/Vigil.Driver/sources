@@ -1,0 +1,13 @@
+TARGETNAME=vigilflt
+TARGETTYPE=DRIVER
+DRIVERTYPE=FS
+
+TARGETLIBS=$(DDK_LIB_PATH)\fltMgr.lib \
+           $(DDK_LIB_PATH)\ntoskrnl.lib
+
+INCLUDES=$(DDK_INC_PATH)
+
+MSC_WARNING_LEVEL=/W3
+
+SOURCES=vigilflt.c \
+        vigilflt.rc

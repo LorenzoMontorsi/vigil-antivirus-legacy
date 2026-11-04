@@ -39,6 +39,9 @@ namespace Vigil.App.Services
         /// <summary>Scudo anti-ransomware del servizio (file-esca + rilevamento delle ondate).</summary>
         [DataMember(Name = "anti_ransomware")] public bool AntiRansomware = true;
 
+        /// <summary>Autodifesa a livello di driver (minifilter, solo Windows a 32 bit).</summary>
+        [DataMember(Name = "self_protection")] public bool SelfProtection = true;
+
         /// <summary>Regole YARA caricate in ClamAV: "none" / "core" / "extended".</summary>
         [DataMember(Name = "yara_package")] public string YaraPackage = "none";
 
@@ -62,6 +65,7 @@ namespace Vigil.App.Services
             // per i campi assenti nei file di versioni precedenti.
             Heuristics = ScanArchives = TrustMicrosoft = UseCache = ClamavEnabled = AutoUpdate = StartAtLogin = ContextMenu = true;
             AntiRansomware = true;
+            SelfProtection = true;
             YaraPackage = "none";
             MaxFileSizeMb = 64;
             UpdateIntervalHours = 4;

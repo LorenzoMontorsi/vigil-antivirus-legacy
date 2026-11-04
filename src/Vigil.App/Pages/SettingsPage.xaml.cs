@@ -82,6 +82,16 @@ namespace Vigil.App.Pages
                 ? "Attivo · " + (rt != null ? rt.Decoys : 0) + " file-esca disseminati nelle cartelle dei documenti."
                 : "Disattivato.";
 
+            SelfProtect.IsChecked = S.SelfProtection;
+            SelfProtect.IsEnabled = AppState.Current.ServiceMode;
+            SelfProtectInfo.Text = !AppState.Current.ServiceMode
+                ? "Richiede il servizio."
+                : rt != null && rt.SelfProtection
+                ? "Attiva: i file di Vigil sono protetti dal driver."
+                : S.SelfProtection
+                ? "Non attiva (il driver si carica solo su Windows a 32 bit)."
+                : "Disattivata.";
+
             var yara = AppState.Current.YaraStatus;
             YaraInfo.Text = (S.YaraPackage ?? "none") == "none"
                 ? "Nessuna regola YARA caricata."
@@ -193,6 +203,22 @@ namespace Vigil.App.Pages
                 {
                     st.Clamav.Stop();
                 }
+            }) { IsBackground = true }.Start();
+        }
+
+        void OnSelfProtect(object sender, RoutedEventArgs e)
+        {
+            bool on = SelfProtect.IsChecked == true;
+            var st = AppState.Current;
+            new System.Threading.Thread(() =>
+            {
+                var err = st.SetSelfProtection(on);
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (err != null)
+                        MessageBox.Show("Non applicato: " + err, "Vigil Legacy", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    Refresh();
+                }));
             }) { IsBackground = true }.Start();
         }
 

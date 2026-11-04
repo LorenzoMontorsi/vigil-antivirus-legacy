@@ -7,3 +7,10 @@ obj/
 /dist/
 TestResults/
 /third_party/
+
+# Driver (WDK 7.1 build artifacts)
+src/Vigil.Driver/obj*/
+src/Vigil.Driver/*.log
+src/Vigil.Driver/*.err
+src/Vigil.Driver/*.wrn
+src/Vigil.Driver/build*.dat

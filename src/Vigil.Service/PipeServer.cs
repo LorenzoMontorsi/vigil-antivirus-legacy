@@ -148,6 +148,15 @@ namespace Vigil.Service
                     core.SaveSettings();
                     core.Ransom.SetEnabled(req.On);
                     break;
+                case "selfprotect":
+                    core.Settings.SelfProtection = req.On;
+                    core.SaveSettings();
+                    if (req.On)
+                        new System.Threading.Thread(() => core.Driver.Enable()) { IsBackground = true }.Start();
+                    else
+                        core.Driver.Disable();
+                    core.Emit("info", null, null, req.On ? "Autodifesa del driver attivata" : "Autodifesa del driver disattivata", null);
+                    break;
                 case "yara":
                     {
                         var pkg = (req.Package ?? "none").Trim();

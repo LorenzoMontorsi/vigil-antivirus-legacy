@@ -31,6 +31,7 @@ namespace Vigil.Service
         [DataMember(Name = "update_interval_hours")] public int UpdateIntervalHours = 4;
         [DataMember(Name = "clamav_enabled")] public bool ClamavEnabled = true;
         [DataMember(Name = "anti_ransomware")] public bool AntiRansomware = true;
+        [DataMember(Name = "self_protection")] public bool SelfProtection = true;
         [DataMember(Name = "yara_package")] public string YaraPackage = "none";
         [DataMember(Name = "yara")] public string Yara;
         [DataMember(Name = "last_update_unix")] public long LastUpdateUnix;
@@ -45,6 +46,7 @@ namespace Vigil.Service
             UpdateIntervalHours = 4;
             ClamavEnabled = true;
             AntiRansomware = true;
+            SelfProtection = true;
             YaraPackage = "none";
         }
     }
@@ -68,6 +70,7 @@ namespace Vigil.Service
         public ScanEngine Engine { get { return engine; } }
         public ScanCache Cache { get; private set; }
         public RansomGuard Ransom { get; private set; }
+        public DriverManager Driver { get; private set; }
 
         FileGuard files;
         ProcessGuard processes;
@@ -88,6 +91,7 @@ namespace Vigil.Service
             Protect(ServicePaths.Quarantine);
             Protect(ServicePaths.Signatures);
             Ransom = new RansomGuard(this);
+            Driver = new DriverManager((detail, action) => Emit("info", null, null, detail, action));
         }
 
         /// <summary>
@@ -120,6 +124,8 @@ namespace Vigil.Service
             processes = new ProcessGuard(this);
             processes.Start();
             Ransom.Start();
+            if (Settings.SelfProtection && Driver.Available)
+                new Thread(() => Driver.Enable()) { IsBackground = true, Name = "Vigil driver" }.Start();
             if (Settings.ClamavEnabled)
                 Clamav.Start();
             if ((Settings.ClamavEnabled && !Clamav.HasDatabase) || IsUpdateDue())
@@ -133,6 +139,7 @@ namespace Vigil.Service
             if (files != null) files.Stop();
             if (processes != null) processes.Stop();
             if (pipe != null) pipe.Stop();
+            if (Driver != null) Driver.Disable();
             try { if (Cache != null) Cache.Save(); } catch (Exception) { }
             Clamav.Stop();
         }
@@ -396,6 +403,7 @@ namespace Vigil.Service
                 Quarantined = CountQuarantined(),
                 Ransomware = Ransom != null && Ransom.Enabled,
                 Decoys = Ransom != null ? Ransom.DecoyCount : 0,
+                SelfProtection = Driver != null && Driver.Loaded,
                 Yara = Settings.ClamavEnabled && (Settings.YaraPackage ?? "none") != "none" ? Settings.Yara : null,
                 MalwareBazaar = string.IsNullOrEmpty(Settings.MalwareBazaarKey) ? null : (Settings.MalwareBazaar ?? "in attesa del primo aggiornamento"),
             };
