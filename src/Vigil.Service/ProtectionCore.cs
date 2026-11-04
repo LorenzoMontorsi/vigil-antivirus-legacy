@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -316,8 +317,11 @@ namespace Vigil.Service
             try
             {
                 Directory.CreateDirectory(ServicePaths.Logs);
+                // Codifica ANSI del sistema (non UTF-8): così le lettere accentate si leggono
+                // correttamente con "type" e col Blocco note di Windows XP.
                 File.AppendAllText(Path.Combine(ServicePaths.Logs, "realtime.log"),
-                    DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "  " + e.Kind + "  " + e.Action + "  " + (e.Threat ?? "-") + "  " + (e.Path ?? "-") + "  " + (e.Detail ?? "") + Environment.NewLine);
+                    DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "  " + e.Kind + "  " + e.Action + "  " + (e.Threat ?? "-") + "  " + (e.Path ?? "-") + "  " + (e.Detail ?? "") + Environment.NewLine,
+                    Encoding.Default);
             }
             catch (Exception) { }
         }
