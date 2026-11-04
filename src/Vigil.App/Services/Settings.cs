@@ -36,6 +36,9 @@ namespace Vigil.App.Services
         /// <summary>Motore ClamAV (clamd). Con 512 MB di RAM o meno conviene spegnerlo.</summary>
         [DataMember(Name = "clamav_enabled")] public bool ClamavEnabled = true;
 
+        /// <summary>Scudo anti-ransomware del servizio (file-esca + rilevamento delle ondate).</summary>
+        [DataMember(Name = "anti_ransomware")] public bool AntiRansomware = true;
+
         [DataMember(Name = "auto_update")] public bool AutoUpdate = true;
         [DataMember(Name = "update_interval_hours")] public int UpdateIntervalHours = 4;
         [DataMember(Name = "exclusions")] public Exclusions Exclusions = new Exclusions();
@@ -55,6 +58,7 @@ namespace Vigil.App.Services
             // DataContractJsonSerializer non esegue gli inizializzatori: valori predefiniti
             // per i campi assenti nei file di versioni precedenti.
             Heuristics = ScanArchives = TrustMicrosoft = UseCache = ClamavEnabled = AutoUpdate = StartAtLogin = ContextMenu = true;
+            AntiRansomware = true;
             MaxFileSizeMb = 64;
             UpdateIntervalHours = 4;
             Exclusions = new Exclusions();

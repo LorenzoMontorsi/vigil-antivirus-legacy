@@ -143,6 +143,11 @@ namespace Vigil.Service
                 case "quarantine_delete":
                     core.Quarantine.Delete(req.Id);
                     break;
+                case "antiransom":
+                    core.Settings.AntiRansomware = req.On;
+                    core.SaveSettings();
+                    core.Ransom.SetEnabled(req.On);
+                    break;
                 case "feeds":
                     {
                         var key = (req.Key ?? "").Trim();

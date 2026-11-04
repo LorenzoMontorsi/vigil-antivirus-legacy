@@ -65,6 +65,15 @@ namespace Vigil.App.Pages
                 : "ClamAV " + bundled + " per Windows legacy (port di Gianluigi Tiesi, progetto ClamWin) · stato: " +
                   (clam.IsReady ? "pronto, " + DashboardPage.ShortClamVersion(clam.VersionText) : clam.Detail ?? "non attivo");
 
+            AntiRansom.IsChecked = S.AntiRansomware;
+            AntiRansom.IsEnabled = AppState.Current.ServiceMode;
+            var rt = AppState.Current.Realtime.Status;
+            RtInfo.Text = !AppState.Current.ServiceMode
+                ? "Il servizio della protezione in tempo reale non è installato: lo scudo funziona solo con il servizio."
+                : S.AntiRansomware
+                ? "Attivo · " + (rt != null ? rt.Decoys : 0) + " file-esca disseminati nelle cartelle dei documenti."
+                : "Disattivato.";
+
             if (!MbKey.IsKeyboardFocusWithin)
                 MbKey.Text = S.MalwareBazaarKey ?? "";
             var mb = AppState.Current.MalwareBazaarStatus;
@@ -169,6 +178,22 @@ namespace Vigil.App.Pages
                 {
                     st.Clamav.Stop();
                 }
+            }) { IsBackground = true }.Start();
+        }
+
+        void OnAntiRansom(object sender, RoutedEventArgs e)
+        {
+            bool on = AntiRansom.IsChecked == true;
+            var st = AppState.Current;
+            new System.Threading.Thread(() =>
+            {
+                var err = st.SetAntiRansomware(on);
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (err != null)
+                        MessageBox.Show("Non applicato: " + err, "Vigil Legacy", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    Refresh();
+                }));
             }) { IsBackground = true }.Start();
         }
 

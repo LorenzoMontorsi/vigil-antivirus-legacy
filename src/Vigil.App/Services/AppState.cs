@@ -260,6 +260,19 @@ namespace Vigil.App.Services
             return null;
         }
 
+        /// <summary>Attiva/disattiva lo scudo anti-ransomware (serve il servizio; UAC se richiesto). null se riuscito.</summary>
+        public string SetAntiRansomware(bool on)
+        {
+            if (ServiceMode)
+            {
+                var err = Realtime.Command(new RtRequest { Cmd = "antiransom", On = on });
+                if (err != null) return err;
+            }
+            Settings.AntiRansomware = on;
+            SaveSettings();
+            return null;
+        }
+
         /// <summary>Opzioni di scansione correnti, con ClamAV e cache se attivi.</summary>
         public ScanOptions BuildScanOptions()
         {

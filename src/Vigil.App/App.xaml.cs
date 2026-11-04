@@ -164,6 +164,10 @@ namespace Vigil.App
                             Tuple.Create<string, Action>("Analizza il file", () => { ShowMain(); ((MainWindow)MainWindow).Scan.StartScan("custom", new[] { ev.Path }); ((MainWindow)MainWindow).ShowScan(); }),
                             Tuple.Create<string, Action>("Ignora", null));
                     break;
+                case "ransom":
+                    ToastWindow.Show("Possibile ransomware!", ev.Detail, true, 0,
+                        Tuple.Create("Apri la quarantena", openQuarantine), Tuple.Create<string, Action>("Ho capito", null));
+                    break;
                 case "suspicious":
                     ToastWindow.Show("File sospetto", name + ": " + ev.Detail, false, 10,
                         Tuple.Create<string, Action>("Analizza", () => { ShowMain(); ((MainWindow)MainWindow).Scan.StartScan("custom", new[] { ev.Path }); ((MainWindow)MainWindow).ShowScan(); }),

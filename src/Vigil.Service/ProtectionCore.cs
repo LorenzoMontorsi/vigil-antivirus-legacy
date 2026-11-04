@@ -29,6 +29,7 @@ namespace Vigil.Service
         [DataMember(Name = "exclusions")] public Exclusions Exclusions = new Exclusions();
         [DataMember(Name = "update_interval_hours")] public int UpdateIntervalHours = 4;
         [DataMember(Name = "clamav_enabled")] public bool ClamavEnabled = true;
+        [DataMember(Name = "anti_ransomware")] public bool AntiRansomware = true;
         [DataMember(Name = "last_update_unix")] public long LastUpdateUnix;
         [DataMember(Name = "last_update_ok")] public bool LastUpdateOk;
         [DataMember(Name = "malwarebazaar_key")] public string MalwareBazaarKey;
@@ -40,6 +41,7 @@ namespace Vigil.Service
             Exclusions = new Exclusions();
             UpdateIntervalHours = 4;
             ClamavEnabled = true;
+            AntiRansomware = true;
         }
     }
 
@@ -61,6 +63,7 @@ namespace Vigil.Service
         volatile ScanEngine engine = new ScanEngine();
         public ScanEngine Engine { get { return engine; } }
         public ScanCache Cache { get; private set; }
+        public RansomGuard Ransom { get; private set; }
 
         FileGuard files;
         ProcessGuard processes;
@@ -80,6 +83,7 @@ namespace Vigil.Service
             Quarantine = new Quarantine(ServicePaths.Quarantine);
             Protect(ServicePaths.Quarantine);
             Protect(ServicePaths.Signatures);
+            Ransom = new RansomGuard(this);
         }
 
         /// <summary>
@@ -111,6 +115,7 @@ namespace Vigil.Service
             files.Start();
             processes = new ProcessGuard(this);
             processes.Start();
+            Ransom.Start();
             if (Settings.ClamavEnabled)
                 Clamav.Start();
             if ((Settings.ClamavEnabled && !Clamav.HasDatabase) || IsUpdateDue())
@@ -356,6 +361,8 @@ namespace Vigil.Service
                 ProcessMonitor = processes != null && processes.Running,
                 WatchedDrives = files != null ? files.Drives : new List<string>(),
                 Quarantined = CountQuarantined(),
+                Ransomware = Ransom != null && Ransom.Enabled,
+                Decoys = Ransom != null ? Ransom.DecoyCount : 0,
                 MalwareBazaar = string.IsNullOrEmpty(Settings.MalwareBazaarKey) ? null : (Settings.MalwareBazaar ?? "in attesa del primo aggiornamento"),
             };
         }

@@ -71,9 +71,9 @@ namespace Vigil.Service
                         NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size,
                         InternalBufferSize = 64 * 1024,
                     };
-                    w.Created += (s, e) => Enqueue(e.FullPath);
-                    w.Changed += (s, e) => Enqueue(e.FullPath);
-                    w.Renamed += (s, e) => Enqueue(e.FullPath);
+                    w.Created += (s, e) => { core.Ransom.Observe(e.FullPath, null); Enqueue(e.FullPath); };
+                    w.Changed += (s, e) => { core.Ransom.Observe(e.FullPath, null); Enqueue(e.FullPath); };
+                    w.Renamed += (s, e) => { core.Ransom.Observe(e.FullPath, e.OldFullPath); Enqueue(e.FullPath); };
                     w.Error += (s, e) => core.Emit("info", null, null, "Troppe modifiche contemporanee su " + d.Name + ": alcune potrebbero non essere state controllate", null);
                     w.EnableRaisingEvents = true;
                     watchers.Add(w);
