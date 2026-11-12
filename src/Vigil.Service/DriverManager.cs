@@ -18,6 +18,10 @@ namespace Vigil.Service
     sealed class DriverManager
     {
         public const string FilterName = "vigilflt";
+        // 328010 è l'altitudine di Windows Defender (WdFilter): in conflitto su Windows 7 e successivi.
+        public const string Altitude = "328500";
+        public const string LoadOrderGroup = "FSFilter Anti-Virus";
+        const string InstanceName = "Vigil Legacy Instance";
 
         readonly Action<string, string> log; // (dettaglio, azione)
         public bool Loaded { get; private set; }
@@ -73,6 +77,11 @@ namespace Vigil.Service
             {
                 if (!Registered())
                     Register();
+                else
+                    WriteInstanceKeys();
+                // Se era già carico con l'altitudine vecchia (328010), scaricalo e ricaricalo.
+                if (IsLoaded() && !LoadedAtExpectedAltitude())
+                    Disable();
                 int code = Run(Fltmc, "load " + FilterName, 30000);
                 Loaded = code == 0 || IsLoaded();
                 if (Loaded)
@@ -104,16 +113,34 @@ namespace Vigil.Service
         void Register()
         {
             File.Copy(Sys, Path.Combine(DriversDir, "vigilflt.sys"), true);
-            Run(Sc, "create " + FilterName + " type= filesys start= demand binPath= System32\\drivers\\vigilflt.sys DisplayName= \"Vigil Legacy Self-Protection\"", 30000);
+            Run(Sc, "create " + FilterName + " type= filesys start= demand binPath= System32\\drivers\\vigilflt.sys group= \"" + LoadOrderGroup + "\" depend= FltMgr DisplayName= \"Vigil Legacy Self-Protection\"", 30000);
             Run(Sc, "description " + FilterName + " \"Protegge i file di Vigil Legacy (minifilter).\"", 15000);
-            using (var k = Microsoft.Win32.Registry.LocalMachine.CreateSubKey(
-                @"SYSTEM\CurrentControlSet\Services\" + FilterName + @"\Instances"))
+            WriteInstanceKeys();
+        }
+
+        /// <summary>
+        /// Allinea gruppo di load-order e altitudine, sia in Instances sia in Parameters\Instances
+        /// (quest'ultima è quella usata dall'INF su Windows 10 1903 e successivi).
+        /// Va chiamato anche se il servizio del filtro esiste già, per correggere un'installazione
+        /// precedente con altitudine 328010.
+        /// </summary>
+        void WriteInstanceKeys()
+        {
+            Run(Sc, "config " + FilterName + " group= \"" + LoadOrderGroup + "\" depend= FltMgr", 15000);
+            foreach (var rel in new[]
             {
-                k.SetValue("DefaultInstance", "Vigil Legacy Instance");
-                using (var inst = k.CreateSubKey("Vigil Legacy Instance"))
+                @"SYSTEM\CurrentControlSet\Services\" + FilterName + @"\Instances",
+                @"SYSTEM\CurrentControlSet\Services\" + FilterName + @"\Parameters\Instances",
+            })
+            {
+                using (var k = Microsoft.Win32.Registry.LocalMachine.CreateSubKey(rel))
                 {
-                    inst.SetValue("Altitude", "328010");
-                    inst.SetValue("Flags", 0, Microsoft.Win32.RegistryValueKind.DWord);
+                    k.SetValue("DefaultInstance", InstanceName);
+                    using (var inst = k.CreateSubKey(InstanceName))
+                    {
+                        inst.SetValue("Altitude", Altitude);
+                        inst.SetValue("Flags", 0, Microsoft.Win32.RegistryValueKind.DWord);
+                    }
                 }
             }
         }
@@ -138,13 +165,30 @@ namespace Vigil.Service
 
         bool IsLoaded()
         {
+            return FilterLine() != null;
+        }
+
+        /// <summary>True se fltmc elenca il filtro già all'altitudine 328500.</summary>
+        bool LoadedAtExpectedAltitude()
+        {
+            var line = FilterLine();
+            return line != null && line.IndexOf(Altitude, StringComparison.Ordinal) >= 0;
+        }
+
+        string FilterLine()
+        {
             try
             {
                 var o = new StringBuilder();
                 Run(Fltmc, "filters", 15000, o);
-                return o.ToString().IndexOf(FilterName, StringComparison.OrdinalIgnoreCase) >= 0;
+                foreach (var line in o.ToString().Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    if (line.IndexOf(FilterName, StringComparison.OrdinalIgnoreCase) >= 0)
+                        return line;
+                }
+                return null;
             }
-            catch (Exception) { return false; }
+            catch (Exception) { return null; }
         }
 
         static int Run(string exe, string args, int timeoutMs, StringBuilder output = null)

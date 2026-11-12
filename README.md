@@ -99,7 +99,7 @@ Vigil Legacy usa invece un **servizio** (`VigilLegacySvc.exe`, account SYSTEM):
 Il limite onesto: il controllo avviene **subito dopo** la scrittura o l'avvio, non prima. Un programma infetto resta in
 esecuzione per il tempo dell'analisi (di norma pochi millisecondi, grazie alla cache).
 
-### Autodifesa a livello di driver (solo Windows a 32 bit)
+### Autodifesa a livello di driver
 
 C'è però **un** driver: un minifilter (`vigilflt.sys`, cartella `src/Vigil.Driver`, compilato col WDK 7.1) che protegge
 la cartella del programma. Con il driver carico, nessuno — né un malware né un amministratore — può modificare,

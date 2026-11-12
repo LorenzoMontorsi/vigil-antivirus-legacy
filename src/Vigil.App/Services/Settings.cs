@@ -39,7 +39,7 @@ namespace Vigil.App.Services
         /// <summary>Scudo anti-ransomware del servizio (file-esca + rilevamento delle ondate).</summary>
         [DataMember(Name = "anti_ransomware")] public bool AntiRansomware = true;
 
-        /// <summary>Autodifesa a livello di driver (minifilter, solo Windows a 32 bit).</summary>
+        /// <summary>Autodifesa a livello di driver (minifilter; a 64 bit serve il test-signing).</summary>
         [DataMember(Name = "self_protection")] public bool SelfProtection = true;
 
         /// <summary>Regole YARA caricate in ClamAV: "none" / "core" / "extended".</summary>

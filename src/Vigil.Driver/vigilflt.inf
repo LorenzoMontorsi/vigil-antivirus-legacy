@@ -1,6 +1,9 @@
 ;
 ; vigilflt.inf - minifilter di autodifesa di Vigil Legacy
 ;
+; ALTITUDINE: 328500 è un valore provvisorio nella fascia "FSFilter Anti-Virus".
+; 328010 è di Microsoft Defender (WdFilter) e va in conflitto su Windows 7 e successivi.
+;
 [Version]
 Signature   = "$WINDOWS NT$"
 Class       = "AntiVirus"
@@ -41,6 +44,9 @@ AddReg         = Vigilflt.AddRegistry
 HKR,"Instances","DefaultInstance",0x00000000,%DefaultInstance%
 HKR,"Instances\"%Instance%,"Altitude",0x00000000,%Altitude%
 HKR,"Instances\"%Instance%,"Flags",0x00010001,0x0
+HKR,"Parameters\Instances","DefaultInstance",0x00000000,%DefaultInstance%
+HKR,"Parameters\Instances\"%Instance%,"Altitude",0x00000000,%Altitude%
+HKR,"Parameters\Instances\"%Instance%,"Flags",0x00010001,0x0
 
 [Vigilflt.DriverFiles]
 vigilflt.sys
@@ -58,4 +64,4 @@ ServiceDesc     = "Vigil Legacy - protezione dei file (minifilter)"
 DiskName        = "Vigil Legacy"
 DefaultInstance = "Vigil Legacy"
 Instance        = "Vigil Legacy"
-Altitude        = "328010"
+Altitude        = "328500"

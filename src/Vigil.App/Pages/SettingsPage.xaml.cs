@@ -89,7 +89,7 @@ namespace Vigil.App.Pages
                 : rt != null && rt.SelfProtection
                 ? "Attiva: i file di Vigil sono protetti dal driver."
                 : S.SelfProtection
-                ? "Non attiva (il driver si carica solo su Windows a 32 bit)."
+                ? "Non attiva: il driver non è caricato. Sui sistemi a 64 bit serve la modalità test (abilita-driver-64bit.cmd e un riavvio)."
                 : "Disattivata.";
 
             var yara = AppState.Current.YaraStatus;
